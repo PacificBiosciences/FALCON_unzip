@@ -48,7 +48,7 @@ with open("arid_to_phase") as f:
         arid2phase[row[0]] = (row[1], row[2])
 
 def filter_stage1(input_):
-    fn, max_diff, max_ovlp, min_ovlp, min_len = input_
+    db_fn, fn, max_diff, max_ovlp, min_ovlp, min_len = input_
     try:
         ignore_rtn = []
         current_q_id = None
@@ -58,7 +58,8 @@ def filter_stage1(input_):
         overlap_data = {"5p":0, "3p":0}
         overlap_phase = {"5p":set(), "3p":set()}
         q_id = None
-        for l in sp.check_output(shlex.split("LA4Falcon -mo ../1-preads_ovl/preads.db %s" % fn)).splitlines():
+
+        for l in sp.check_output(shlex.split("LA4Falcon -mo %s %s" % (db_fn, fn) ) ).splitlines():
             l = l.strip().split()
             q_id, t_id = l[:2]
 
@@ -143,10 +144,10 @@ def filter_stage1(input_):
         return
 
 def filter_stage2(input_):
-    fn, max_diff, max_ovlp, min_ovlp, min_len, ignore_set = input_
+    db_fn, fn, max_diff, max_ovlp, min_ovlp, min_len, ignore_set = input_
     try:
         contained_id = set()
-        for l in sp.check_output(shlex.split("LA4Falcon -mo ../1-preads_ovl/preads.db %s" % fn)).splitlines():
+        for l in sp.check_output(shlex.split("LA4Falcon -mo %s %s" % (db_fn, fn))).splitlines():
             l = l.strip().split()
             q_id, t_id = l[:2]
 
@@ -183,14 +184,13 @@ def filter_stage2(input_):
         return
 
 def filter_stage3(input_):
-    fn, max_diff, max_ovlp, min_ovlp, min_len, ignore_set, contained_set, bestn = input_
+
+    db_fn, fn, max_diff, max_ovlp, min_ovlp, min_len, ignore_set, contained_set, bestn = input_
 
     try:
-
         ovlp_output = []
         current_q_id = None
-
-        for l in sp.check_output(shlex.split("LA4Falcon -mo ../1-preads_ovl/preads.db %s" % fn)).splitlines():
+        for l in sp.check_output(shlex.split("LA4Falcon -mo %s %s" % (db_fn, fn) )).splitlines():
             l = l.strip().split()
             q_id, t_id = l[:2]
 
@@ -289,6 +289,7 @@ if __name__ == "__main__":
     parser.add_argument('--n_core', type=int, default=4,
                         help='number of processes used for generating consensus')
     parser.add_argument('--fofn', type=str, help='file contains the path of all LAS file to be processed in parallel')
+    parser.add_argument('--db', type=str, help='read db file path')
     parser.add_argument('--max_diff', type=int, help="max difference of 5' and 3' coverage")
     parser.add_argument('--max_cov', type=int, help="max coverage of 5' or 3' coverage")
     parser.add_argument('--min_cov', type=int, help="min coverage of 5' or 3' coverage")
@@ -302,12 +303,13 @@ if __name__ == "__main__":
     min_cov = args.min_cov
     min_len = args.min_len
     bestn = args.bestn
+    db_fn = args.db
 
     file_list = open(args.fofn).read().split("\n")
     inputs = []
     for fn in file_list:
         if len(fn) != 0:
-            inputs.append( (fn, max_diff, max_cov, min_cov, min_len) )
+            inputs.append( (db_fn, fn, max_diff, max_cov, min_cov, min_len) )
     
     ignore_all = []
     for res in exe_pool.imap(filter_stage1, inputs):  
@@ -317,7 +319,7 @@ if __name__ == "__main__":
     ignore_all = set(ignore_all)
     for fn in file_list:
         if len(fn) != 0:
-            inputs.append( (fn, max_diff, max_cov, min_cov, min_len, ignore_all) )
+            inputs.append( (db_fn, fn, max_diff, max_cov, min_cov, min_len, ignore_all) )
     contained = set()
     for res in exe_pool.imap(filter_stage2, inputs):  
         contained.update(res[1])
@@ -328,7 +330,7 @@ if __name__ == "__main__":
     ignore_all = set(ignore_all)
     for fn in file_list:
         if len(fn) != 0:
-            inputs.append( (fn, max_diff, max_cov, min_cov, min_len, ignore_all, contained, bestn) )
+            inputs.append( (db_fn, fn, max_diff, max_cov, min_cov, min_len, ignore_all, contained, bestn) )
     for res in exe_pool.imap(filter_stage3, inputs):  
         for l in res[1]:
             print " ".join(l)
