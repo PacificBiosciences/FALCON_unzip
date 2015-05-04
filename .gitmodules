@@ -1,0 +1,3 @@
+[submodule "FALCON"]
+	path = FALCON
+	url = git@github.com:PacificBiosciences/FALCON.git
