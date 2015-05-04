@@ -8,12 +8,12 @@ import os, re
 
 cigar_re = r"(\d+)([MIDNSHP=X])"
 
-def make_het_call(self, bam_fn, ctg_id, ref_seq, base_dir = "./"):
+def make_het_call(self):
     
     bam_fn = fn(self.bam_file)
     ctg_id = self.parameters["ctg_id"]
     ref_seq = self.parameters["ref_seq"]
-    base_dif = self.parameters["base_dir"]
+    base_dir = self.parameters["base_dir"]
     vmap_fn = fn(self.vmap_file)
     vpos_fn = fn(self.vpos_file)
     q_id_map_fn = fn(self.q_id_map_file)
@@ -112,7 +112,7 @@ def generate_association_table(self):
     vmap_fn = fn(self.vmap_file)
     atable_fn = fn(self.atable_file)
     ctg_id = self.parameters["ctg_id"]
-    base_dif = self.parameters["base_dir"]
+    base_dir = self.parameters["base_dir"]
 
     vmap = {}
     v_positions = []
@@ -418,13 +418,13 @@ def get_phased_reads(self):
 if __name__ == "__main__":
     import argparse
     import re
-    parser = argparse.ArgumentParser(description='a simple multi-processes LAS ovelap data filter')
+    parser = argparse.ArgumentParser(description='phasing variants and reads from a bam file')
     # we can run this in parallel mode in the furture
     #parser.add_argument('--n_core', type=int, default=4,
     #                    help='number of processes used for generating consensus')
-    parser.add_argument('--bam', type=str, help='path to sorted bam file')
-    parser.add_argument('--fasta', type=str, help='path to the fasta file of contain the contig')
-    parser.add_argument('--ctg_id', type=str, help='contig identifier in the bam file')
+    parser.add_argument('--bam', type=str, help='path to sorted bam file', required=True)
+    parser.add_argument('--fasta', type=str, help='path to the fasta file of contain the contig', required=True)
+    parser.add_argument('--ctg_id', type=str, help='contig identifier in the bam file', required=True)
     parser.add_argument('--base_dir', type=str, default="./", help='the output base_dir, default to current working directory')
 
     args = parser.parse_args()
@@ -452,7 +452,7 @@ if __name__ == "__main__":
     parameters = {}
     parameters["ctg_id"] = ctg_id
     parameters["ref_seq"] = ref_seq
-    parameters["base_dir"] = base_dif
+    parameters["base_dir"] = base_dir
     
     make_het_call_task = PypeTask( inputs = { "bam_file": bam_file },
                          outputs = { "vmap_file": vmap_file, "vpos_file": vpos_file, "q_id_map_file": q_id_map_file },
@@ -468,7 +468,7 @@ if __name__ == "__main__":
     atable_file = makePypeLocalFile( os.path.join(base_dir, ctg_id, "atable") )
     parameters = {}
     parameters["ctg_id"] = ctg_id
-    parameters["base_dir"] = base_dif
+    parameters["base_dir"] = base_dir
     generate_association_table_task = PypeTask( inputs = { "vmap_file": vmap_file },
                                       outputs = { "atable_file": atable_file },
                                       parameters = parameters,
@@ -482,9 +482,9 @@ if __name__ == "__main__":
 
     phased_variant_file = makePypeLocalFile( os.path.join(base_dir, ctg_id, "phased_variants") )
     get_phased_blocks_task = PypeTask( inputs = { "vmap_file": vmap_file, "atable_file": atable_file },
-                                      outputs = { "phased_variant_file": phased_variant_file) },
+                                      outputs = { "phased_variant_file": phased_variant_file },
                                       TaskType = PypeThreadTaskBase,
-                                      URL = "task://localhost/g_atable") (get_phased_blocks)
+                                      URL = "task://localhost/get_phased_blocks") (get_phased_blocks)
     wf.addTasks([get_phased_blocks_task])
 
 
@@ -494,9 +494,9 @@ if __name__ == "__main__":
     get_phased_reads_task = PypeTask( inputs = { "vmap_file": vmap_file, 
                                                  "q_id_map_file": q_id_map_file, 
                                                  "phased_variant_file": phased_variant_file },
-                                      outputs = { "phased_read_file": phased_read_file) },
+                                      outputs = { "phased_read_file": phased_read_file },
                                       TaskType = PypeThreadTaskBase,
-                                      URL = "task://localhost/g_atable") (get_phased_reads)
+                                      URL = "task://localhost/get_phased_reads") (get_phased_reads)
     wf.addTasks([get_phased_reads_task])
     
 
