@@ -42,10 +42,6 @@ import subprocess as sp
 import shlex
 
 arid2phase = {}
-with open("arid_to_phase") as f:
-    for row in f:
-        row = row.strip().split()
-        arid2phase[row[0]] = (row[1], row[2])
 
 def filter_stage1(input_):
     db_fn, fn, max_diff, max_ovlp, min_ovlp, min_len = input_
@@ -295,8 +291,8 @@ if __name__ == "__main__":
     parser.add_argument('--min_cov', type=int, help="min coverage of 5' or 3' coverage")
     parser.add_argument('--min_len', type=int, default=2500, help="min length of the reads")
     parser.add_argument('--bestn', type=int, default=10, help="output at least best n overlaps on 5' or 3' ends if possible")
+    parser.add_argument('--rid_phase_map', type=str, help="the file that encode the relationship of the read id to phase blocks", required=True)
     args = parser.parse_args()
-    exe_pool = Pool(args.n_core)
 
     max_diff = args.max_diff
     max_cov = args.max_cov
@@ -305,6 +301,13 @@ if __name__ == "__main__":
     bestn = args.bestn
     db_fn = args.db
 
+    with open(args.rid_phase_map) as f:
+        for row in f:
+            row = row.strip().split()
+            arid2phase[row[0]] = (row[1], row[2])
+
+    exe_pool = Pool(args.n_core)
+    
     file_list = open(args.fofn).read().split("\n")
     inputs = []
     for fn in file_list:
