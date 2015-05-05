@@ -65,20 +65,24 @@ if __name__ == "__main__":
         edge_data = p_asm_G.sg_edges[ (v, w) ]
         if edge_data[-1] != "G":
             continue
+        """
         if vrid not in arid_to_phase:
             continue
         if wrid not in arid_to_phase:
             continue
-        sg.add_node( v, label= "%d_%d" % arid_to_phase[vrid], phase="%d_%d" % arid_to_phase[vrid], src="P" )
-        sg.add_node( w, label= "%d_%d" % arid_to_phase[wrid], phase="%d_%d" % arid_to_phase[wrid], src="P" )
-        if arid_to_phase[vrid][0] == arid_to_phase[wrid][0] and arid_to_phase[vrid][1] != arid_to_phase[wrid][1]:
+        """
+        vphase = arid_to_phase.get(vrid, (-1,0))
+        wphase = arid_to_phase.get(wrid, (-1,0))
+        sg.add_node( v, label= "%d_%d" % vphase, phase="%d_%d" % vphase, src="P" )
+        sg.add_node( w, label= "%d_%d" % wphase, phase="%d_%d" % wphase, src="P" )
+        if vphase[0] == wphase[0] and vphase[1] != wphase[1]:
             cross_phase = "Y"
         else:
             cross_phase = "N"
-        if arid_to_phase[vrid][0] != arid_to_phase[wrid][0]:
-            phase_connection.setdefault( arid_to_phase[vrid], set() )
-            if arid_to_phase[vrid][0] != -1 and arid_to_phase[wrid][0] != -1:
-                phase_connection[ arid_to_phase[vrid] ].add( arid_to_phase[wrid] )
+        if vphase[0] !=wphase[0]:
+            phase_connection.setdefault( vphase, set() )
+            if vphase[0] != -1 and wphase[0] != -1:
+                phase_connection[ vphase ].add( wphase )
 
         sg.add_edge(v, w, src="P", cross_phase = cross_phase)
 
@@ -123,10 +127,12 @@ if __name__ == "__main__":
         for v, w in h_ctg_G_orig.out_edges(n):
             vrid = v.split(":")[0]
             wrid = w.split(":")[0]
-            if arid_to_phase[vrid] == arid_to_phase[wrid]: #if the edge connects the same phase, keep the edge
+            vphase = arid_to_phase.get(vrid, (-1,0))
+            wphase = arid_to_phase.get(wrid, (-1,0))
+            if vphase == wphase: #if the edge connects the same phase, keep the edge
                 continue
 
-            phase = arid_to_phase[vrid]
+            phase = vphase
             anti_phase = list(phase)
             anti_phase[1] = 1 - anti_phase[1]
             anti_phase = tuple(anti_phase)
@@ -197,7 +203,7 @@ if __name__ == "__main__":
                 seq.append(seqs[ seq_id ][ s:t ])
             else:
                 seq.append("".join([ RCMAP[c] for c in seqs[ seq_id ][ s:t:-1 ] ]))
-            print >>h_tig_path, "%s_H%03d" % (ctg_id, h_tig_id), v, w, seq_id, s, t, edge_data[1], edge_data[2], "%d %d" % arid_to_phase[seq_id] 
+            print >>h_tig_path, "%s_H%03d" % (ctg_id, h_tig_id), v, w, seq_id, s, t, edge_data[1], edge_data[2], "%d %d" % arid_to_phase.get(seq_id, (-1,0))
         print >> h_tig_fa, ">%s_H%03d" % (ctg_id, h_tig_id)
         print >> h_tig_fa, "".join(seq)
         h_tig_id += 1
@@ -209,7 +215,7 @@ if __name__ == "__main__":
                 edge_data = h_asm_G.sg_edges[ (v,w) ]
 
             seq_id, s, t = edge_data[0]
-            print >>h_tig_edge, "%s_H%03d" % (ctg_id, h_tig_id), v, w, seq_id, s, t, edge_data[1], edge_data[2], "%d %d" % arid_to_phase[seq_id]
+            print >>h_tig_edge, "%s_H%03d" % (ctg_id, h_tig_id), v, w, seq_id, s, t, edge_data[1], edge_data[2], "%d %d" % arid_to_phase.get(seq_id, (-1,0))
 
 
     h_tig_fa.close()
