@@ -15,7 +15,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     phased_reads = args.phased_reads
     ctg_map = args.ctg_map
-    ctg_id = args.ctg_id
+    the_ctg_id = args.ctg_id
     base_dir = args.base_dir
 
     rid_to_phase = {}        
@@ -29,7 +29,7 @@ if __name__ == "__main__":
         for row in f:
             row = row.strip().split()
             ctg_id = row[0]
-            if not ctg_id.startswith(ctg_id):
+            if not ctg_id.startswith(the_ctg_id):
                 continue
             if int(row[1]) > 1: #not preads
                 continue
