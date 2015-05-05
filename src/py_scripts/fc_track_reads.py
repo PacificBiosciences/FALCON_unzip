@@ -11,6 +11,7 @@ import os
 
 rawread_dir = os.path.abspath( "./0-rawreads" )
 pread_dir = os.path.abspath( "./1-preads_ovl" )
+asm_dir = os.path.abspath( "./2-asm-falcon" )
 
 PypeMPWorkflow.setNumThreadAllowed(12, 12)
 wf = PypeMPWorkflow()
@@ -116,7 +117,6 @@ def dump_pread_ids(self):
 
 wf.addTask( dump_pread_ids )
 
-
 all_raw_las_files = {}
 all_r_ovlp_map_files = {}
 for las_fn in glob.glob( os.path.join( rawread_dir, "raw_reads.*.las") ):
@@ -128,9 +128,9 @@ for las_fn in glob.glob( os.path.join( rawread_dir, "raw_reads.*.las") ):
     ovlp_map_id_file  = makePypeLocalFile( os.path.join( rawread_dir, "ovlp_map.%s" % idx ) ) 
     all_r_ovlp_map_files["r_idmap_%s" % idx ] = ovlp_map_id_file
     make_rawread_map_task = PypeTask( inputs = { "las_file": las_file, "rawread_db": rawread_db },
-                                  outputs = { "ovlp_map_id_file": ovlp_map_id_file },
-                                  TaskType = PypeThreadTaskBase,
-                                  URL = "task://localhost/r_ovlp_map.%s" % idx )
+                                      outputs = { "ovlp_map_id_file": ovlp_map_id_file },
+                                      TaskType = PypeThreadTaskBase,
+                                      URL = "task://localhost/r_ovlp_map.%s" % idx )
     rawread_map_task = make_rawread_map_task(dump_rawread_map)                            
     wf.addTask( rawread_map_task )
 
@@ -145,80 +145,108 @@ for las_fn in glob.glob( os.path.join( pread_dir, "preads.*.las") ):
     ovlp_map_id_file  = makePypeLocalFile( os.path.join( pread_dir, "ovlp_map.%s" % idx ) ) 
     all_p_ovlp_map_files["p_idmap_%s" % idx ] = ovlp_map_id_file
     make_pread_map_task = PypeTask( inputs = { "las_file": las_file, "pread_db": pread_db },
-                                  outputs = { "ovlp_map_id_file": ovlp_map_id_file },
-                                  TaskType = PypeThreadTaskBase,
-                                  URL = "task://localhost/p_ovlp_map.%s" % idx )
+                                    outputs = { "ovlp_map_id_file": ovlp_map_id_file },
+                                    TaskType = PypeThreadTaskBase,
+                                    URL = "task://localhost/p_ovlp_map.%s" % idx )
     pread_map_task = make_pread_map_task(dump_pread_map)                            
     wf.addTask( pread_map_task )
 
 wf.refreshTargets() # block
 
 # need new workflow
-#PypeMPWorkflow.setNumThreadAllowed(12, 12)
-#wf = PypeMPWorkflow()
+PypeMPWorkflow.setNumThreadAllowed(1, 1)
+wf = PypeMPWorkflow()
 
+p_ctg_tiling_path = makePypeLocalFile( os.path.join(asm_dir, "p_ctg_tiling_path") )
+a_ctg_tiling_path = makePypeLocalFile( os.path.join(asm_dir, "a_ctg_tiling_path") )
 
-pread_did_to_rid = open("./1-preads_ovl/preads_ids").read().split("\n")
-rid_to_oid = open("./0-rawreads/raw_reads_ids").read().split("\n")
+inputs = { "rawread_id_file": rawread_id_file,
+           "pread_id_file": pread_id_file,
+           "p_ctg_tiling_path": p_ctg_tiling_path,
+           "a_ctg_tiling_path": a_ctg_tiling_path }
 
-overlap_pread = {}
-for fn in glob.glob("./1-preads_ovl/ovlp_map.*"):
-    with open(fn) as f:
-        for row in f:
-            row = row.strip().split()
-            overlap_pread[int(row[0])] = set([ int(c) for c in row[2:] ])
+parameters = { "p_ovlp_files": [ fn(fobj) for fobj in all_p_ovlp_map_files.values() ],
+               "r_ovlp_files": [ fn(fobj) for fobj in all_r_ovlp_map_files.values() ] }  # put these files as parameters to avoid tracking them
 
-overlap_rawread = {}
-for fn in glob.glob("./0-rawreads/ovlp_map.*"):
-    with open(fn) as f:
-        for row in f:
-            row = row.strip().split()
-            overlap_rawread[int(row[0])] = set([ int(c) for c in row[2:] ])
+contig_to_read_map = makePypeLocalFile( os.path.join(asm_dir, "contig_to_read_map") )
 
-ctg_to_preads = {}
-rid_set = set()
+@PypeTask( inputs = inputs, 
+           outputs = {"contig_to_read_map": contig_to_read_map}, 
+           parameters = parameters,  
+           TaskType = PypeThreadTaskBase, 
+           URL = "task://localhost/get_ctg_read_map" )
+def gen_ctg_to_read_map(self):
+    rawread_id_file = fn( self.rawread_id_file )
+    pread_id_file = fn( self.pread_id_file )
+    contig_to_read_map = fn( self.contig_to_read_map )
+    p_ovlp_map_files = self.parameters["p_ovlp_files"]
+    r_ovlp_map_files = self.parameters["r_ovlp_files"]
+    p_ovlp_map_files.sort()
+    r_ovlp_map_files.sort()
+    tiling_files = [ fn(self.p_ctg_tiling_path), fn(self.a_ctg_tiling_path) ]
+    
+    pread_did_to_rid = open(pread_id_file).read().split("\n")
+    rid_to_oid = open(rawread_id_file).read().split("\n")
+    
+    
+    overlap_pread = {}
+    for ovlp_fn in p_ovlp_map_files:
+        with open(ovlp_fn) as f:
+            for row in f:
+                row = row.strip().split()
+                overlap_pread[int(row[0])] = set([ int(c) for c in row[2:] ])
 
-for fn in ("./2-asm-falcon/p_ctg_tiling_path", "./2-asm-falcon/a_ctg_tiling_path"):
-    with open(fn) as f:
-        for row in f:
-            row = row.strip().split()
-            ctg = row[0]
-            frg0 = int(row[3])
-            ctg_to_preads.setdefault( ctg, set() )
+    overlap_rawread = {}
+    for ovlp_fn in r_ovlp_map_files:
+        with open(ovlp_fn) as f:
+            for row in f:
+                row = row.strip().split()
+                overlap_rawread[int(row[0])] = set([ int(c) for c in row[2:] ])
 
-            rid = pread_did_to_rid[frg0].split("/")[1]
-            rid = int(rid[:-1])
-            oid = rid_to_oid[rid]
-            ctg_to_preads[ctg].add((0, frg0, rid, oid))
-            rid_set.add(frg0)
+    ctg_to_preads = {}
+    rid_set = set()
 
-            for frg in list(overlap_pread.get(frg0,set())):
-                rid = pread_did_to_rid[frg].split("/")[1]
+    for path_fn in tiling_files:
+        with open(path_fn) as f:
+            for row in f:
+                row = row.strip().split()
+                ctg = row[0]
+                frg0 = int(row[3])
+                ctg_to_preads.setdefault( ctg, set() )
+
+                rid = pread_did_to_rid[frg0].split("/")[1]
                 rid = int(rid[:-1])
-                if rid in rid_set:
-                    continue
                 oid = rid_to_oid[rid]
-                ctg_to_preads[ctg].add((1, frg, rid, oid))
-                rid_set.add(rid)
+                ctg_to_preads[ctg].add((0, frg0, rid, oid))
+                rid_set.add(frg0)
+
+                for frg in list(overlap_pread.get(frg0,set())):
+                    rid = pread_did_to_rid[frg].split("/")[1]
+                    rid = int(rid[:-1])
+                    if rid in rid_set:
+                        continue
+                    oid = rid_to_oid[rid]
+                    ctg_to_preads[ctg].add((1, frg, rid, oid))
+                    rid_set.add(rid)
 
 
-for i in range(2,4):
-    for ctg in ctg_to_preads:
-        for r in list(ctg_to_preads[ctg]):
-            class_, pid, rid0, oid = r
+    for i in range(2,4):
+        for ctg in ctg_to_preads:
+            for r in list(ctg_to_preads[ctg]):
+                class_, pid, rid0, oid = r
 
-            for rid in list(overlap_rawread.get(rid0,set())):
-                if rid in rid_set:
-                    continue
-                oid = rid_to_oid[rid]
-                ctg_to_preads[ctg].add((i ,rid0, rid, oid))
-                rid_set.add(rid)
-
-
-with open("./2-asm-falcon/contig_to_read_map", "w") as f:
-    for ctg in ctg_to_preads:
-        for r in list(ctg_to_preads[ctg]):
-            print >>f, ctg, r[0], "%09d" % r[1], "%09d" % r[2], r[3]
+                for rid in list(overlap_rawread.get(rid0,set())):
+                    if rid in rid_set:
+                        continue
+                    oid = rid_to_oid[rid]
+                    ctg_to_preads[ctg].add((i ,rid0, rid, oid))
+                    rid_set.add(rid)
 
 
+    with open(contig_to_read_map, "w") as f:
+        for ctg in ctg_to_preads:
+            for r in list(ctg_to_preads[ctg]):
+                print >>f, ctg, r[0], "%09d" % r[1], "%09d" % r[2], r[3]
 
+wf.addTask( gen_ctg_to_read_map )
+wf.refreshTargets()
