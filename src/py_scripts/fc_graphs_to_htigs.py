@@ -151,7 +151,7 @@ if __name__ == "__main__":
 
     nx.write_gexf(h_ctg_G, "%s_1.gexf" % ctg_id)
 
-    h_edges = h_ctg_G.edges()
+    h_edges = set(h_ctg_G.edges())
     for e in h_ctg_G_0.edges():
         if e in h_edges:    
             h_ctg_G_0.edge[e[0]][e[1]]["h_edge"] = "Y"
