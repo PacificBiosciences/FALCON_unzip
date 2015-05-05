@@ -183,6 +183,7 @@ def filter_stage3(input_):
 
     db_fn, fn, max_diff, max_ovlp, min_ovlp, min_len, ignore_set, contained_set, bestn = input_
 
+    overlap_data = {"5p":[], "3p":[]}
     try:
         ovlp_output = []
         current_q_id = None
