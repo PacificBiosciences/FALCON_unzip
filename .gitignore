@@ -1,0 +1,3 @@
+dist/*
+build/*
+falcon_kit_phasing.egg-info/*
