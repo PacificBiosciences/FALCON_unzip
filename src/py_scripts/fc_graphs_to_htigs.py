@@ -158,6 +158,14 @@ if __name__ == "__main__":
         else:
             h_ctg_G_0.edge[e[0]][e[1]]["h_edge"] = "N"
 
+    with open("h_fg_edges","w") as f:
+        for v, w in h_ctg_G_0.edges():
+            vrid = v.split(":")[0]
+            wrid = w.split(":")[0]
+            vphase = arid_to_phase.get(vrid, (-1,0))
+            wphase = arid_to_phase.get(wrid, (-1,0))
+            print >>f, v, w, h_ctg_G_0.edge[v][w]["h_edge"], h_ctg_G_0.edge[v][w]["cross_phase"], h_ctg_G_0.edge[v][w]["src"], vphase[0], vphase[1], wphase[0], wphase[1]
+
     nx.write_gexf(h_ctg_G_0, "%s_0.gexf" % ctg_id)
 
 
