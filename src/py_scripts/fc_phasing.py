@@ -21,7 +21,9 @@ def make_het_call(self):
     p = subprocess.Popen(shlex.split("samtools view %s %s" % (bam_fn, ctg_id) ), stdout=subprocess.PIPE)
     pileup = {}
     q_id_map = {}
+    q_max_id = 0
     q_id = 0
+    q_name_to_id = {}
 
     try:
         os.makedirs("%s/%s" % (base_dir, ctg_id))
@@ -37,6 +39,12 @@ def make_het_call(self):
             continue
 
         QNAME = l[0]
+        if QNAME not in q_name_to_id:
+            q_id = q_max_id
+            q_name_to_id[QNAME] = q_id
+            q_max_id += 1
+
+        q_id = q_name_to_id[QNAME]
         q_id_map[q_id] = QNAME
         FLAG = int(l[1])
         RNAME = l[2]
@@ -45,6 +53,21 @@ def make_het_call(self):
         SEQ = l[9]
         rp = POS
         qp = 0
+
+        skip_base = 0
+        total_aln_pos = 0
+        for m in re.finditer(cigar_re, CIGAR):
+            adv = int(m.group(1))
+            total_aln_pos += adv
+
+            if m.group(2)  == "S":
+                skip_base += adv
+
+        if 1.0 - 1.0 * skip_base / total_aln_pos < 0.1:
+            continue
+        if total_aln_pos < 2000:
+            continue
+
         for m in re.finditer(cigar_re, CIGAR):
             adv = int(m.group(1))
             if m.group(2) == "S":
@@ -99,7 +122,6 @@ def make_het_call(self):
                     for q_id_ in pileup[pos][b1]:
                         print >> vmap, pos+1, ref_base, b1, q_id_ 
                 del pileup[pos]
-        q_id += 1
 
 
     q_id_map_f = open(q_id_map_fn, "w")
@@ -336,15 +358,17 @@ def get_phased_blocks(self):
     for p in positions:
         b1, b2 = states[p]
         if max_right_ext < left_extent[p]:
-            if len(pb) > 0:
+            if len(pb) > 3:
                 phase_blocks[phase_block_id] = pb
                 phase_block_id += 1
             pb = []
         pb.append( (p, b1, b2) )
         if right_extent[p] > max_right_ext:
             max_right_ext =  right_extent[p]
-
-    phase_blocks[phase_block_id] = pb
+    if len(pb) > 3:
+        phase_blocks[phase_block_id] = pb
+    else:
+        phase_block_id -= 1
 
     
     with open(p_variant_fn, "w") as out_f:
@@ -501,3 +525,5 @@ if __name__ == "__main__":
     
 
     wf.refreshTargets() 
+    with open("fc_phasing_wf.dot", "w") as f:
+        print >>f, wf.graphvizDot 
