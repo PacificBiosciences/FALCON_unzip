@@ -276,7 +276,6 @@ def get_phased_blocks(self):
                     states[pos1] = st1
                 else:
                     states[pos1] = st2
-                print "XXX1",pos1,  states[pos1]
 
             if pos2 not in states:
                 st1 = (b21, b22)
@@ -303,7 +302,7 @@ def get_phased_blocks(self):
                     states[pos2] = st1
                 else:
                     states[pos2] = st2
-                print "XXX2", pos2, states[pos2]
+
     positions = list(positions)
     positions.sort()
 
