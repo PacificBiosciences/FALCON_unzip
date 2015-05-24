@@ -35,7 +35,6 @@ if __name__ == "__main__":
     base_dir = args.base_dir
     fasta_fn = args.fasta
     
-
     p_asm_G = AsmGraph(os.path.join(fc_asm_path, "sg_edges_list"), 
                        os.path.join(fc_asm_path, "utg_data"),
                        os.path.join(fc_asm_path, "ctg_paths") )
@@ -88,6 +87,7 @@ if __name__ == "__main__":
 
     PG_nodes = set(sg.nodes())
     PG_edges = set(sg.edges())
+    
 
     for v, w in h_asm_G.sg_edges:
         
@@ -107,12 +107,17 @@ if __name__ == "__main__":
             sg.add_node( v, label= "%d_%d" % arid_to_phase[vrid], phase="%d_%d" % arid_to_phase[vrid], src="H" )
         if w not in PG_nodes:
             sg.add_node( w, label= "%d_%d" % arid_to_phase[wrid], phase="%d_%d" % arid_to_phase[wrid], src="H" )
+        cross_phase = "N"
 
-        sg.add_edge(v, w, src="H", cross_phase = "N")
+        sg.add_edge(v, w, src="H", cross_phase = cross_phase)
         
 
     s_node = p_asm_G.ctg_data[ctg_id][5][0][0]
-    h_ctg_G = sg.subgraph(nx.descendants(sg, s_node))
+    for g in nx.weakly_connected_component_subgraphs(sg):
+        if s_node in g.nodes():
+            h_ctg_G = g
+            break
+    #h_ctg_G = sg.subgraph(nx.descendants(sg, s_node))
 
     h_ctg_G_0 = h_ctg_G.copy()
 
