@@ -386,6 +386,8 @@ def get_phased_blocks(self):
 
     max_right_ext = 0
     for p in positions:
+        if right_score[p] < 10 or left_score[p] < 10:
+            continue
         b1, b2 = states[p]
         if max_right_ext < left_extent[p]:
             if len(pb) > 3:
