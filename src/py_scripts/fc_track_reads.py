@@ -162,8 +162,6 @@ wf.refreshTargets() # block
 PypeMPWorkflow.setNumThreadAllowed(1, 1)
 wf = PypeMPWorkflow()
 
-#p_ctg_tiling_path = makePypeLocalFile( os.path.join(asm_dir, "p_ctg_tiling_path") )
-#a_ctg_tiling_path = makePypeLocalFile( os.path.join(asm_dir, "a_ctg_tiling_path") )
 sg_edges_list = makePypeLocalFile( os.path.join(asm_dir, "sg_edges_list") )
 utg_data = makePypeLocalFile( os.path.join(asm_dir, "utg_data") )
 ctg_paths = makePypeLocalFile( os.path.join(asm_dir, "ctg_paths") )
@@ -192,7 +190,6 @@ def gen_ctg_to_read_map(self):
     r_ovlp_map_files = self.parameters["r_ovlp_files"]
     p_ovlp_map_files.sort()
     r_ovlp_map_files.sort()
-    #tiling_files = [ fn(self.p_ctg_tiling_path), fn(self.a_ctg_tiling_path) ]
     
     pread_did_to_rid = open(pread_id_file).read().split("\n")
     rid_to_oid = open(rawread_id_file).read().split("\n")
