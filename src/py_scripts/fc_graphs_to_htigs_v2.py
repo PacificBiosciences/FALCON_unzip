@@ -127,7 +127,7 @@ if __name__ == "__main__":
         else:
             if phase0[0] == phase1[0]:
                 sg[v][w]["weight"] = 1
-                sg[v][w]["score"] = 1000
+                sg[v][w]["score"] = 100000
                 sg[v][w]["label"] = "t1"
             else:
                 sg[v][w]["weight"] = 5
@@ -147,38 +147,41 @@ if __name__ == "__main__":
     for v in list(node_to_remove):
         sg.remove_node(v)
 
-    s_path = nx.shortest_path(sg, source=s_node, target=t_node, weight="score")
+
+
+    sg2 = sg.copy()
+    edge_to_remove = set()
+    for v, w in sg2.edges():
+        if sg2.node[v]["phase"] ==  sg2.node[w]["phase"]:
+            continue
+        flag1 = 0
+        flag2 = 0
+        for e in sg2.out_edges(v):
+            if sg2.node[e[0]]["phase"] ==  sg2.node[e[1]]["phase"]:
+                flag1 = 1
+        if flag1 == 1:
+            for e in sg2.in_edges(w):
+                if sg2.node[e[0]]["phase"] ==  sg2.node[e[1]]["phase"]:
+                    flag2 = 1
+        if flag2 == 1:
+            edge_to_remove.add( (v, w) )
+
+
+    for v, w in list(edge_to_remove):
+        sg2.remove_edge(v,w)
+        sg[v][w]["remove"] = 1
+    
+    s_path = nx.shortest_path(sg2, source=s_node, target=t_node, weight="score")
 
     s_path_edges = [] 
     for i in xrange(len(s_path)-1):
         v = s_path[i]
         w = s_path[i+1]
         sg[v][w]["weight"] = 15
+        print v,w,sg[v][w]["score"]
         s_path_edges.append( (v,w) )
 
     s_path_edge_set = set(s_path_edges)
-
-
-    sg2 = sg.copy()
-    edge_to_remove = set()
-    for v in sg2.nodes():
-        keep_phased_edge = False
-        for e in sg2.out_edges(v):
-            w = e[1]
-            if  sg2.node[v]["phase"] ==  sg2.node[w]["phase"]:
-                keep_phased_edge = True
-                break
-        if keep_phased_edge:
-            for e in sg2.out_edges(v):
-                w = e[1]
-                if sg2.node[v]["phase"] !=  sg2.node[w]["phase"] and (v,w) not in s_path_edge_set:
-                    if sg2.out_degree(v) > 1 and sg2.in_degree(w) > 1 :
-                        edge_to_remove.add( (v, w) )
-
-    for v, w in list(edge_to_remove):
-        sg2.remove_edge(v,w)
-        sg[v][w]["remove"] = 1
-    
     for v, w in s_path_edges:
         sg2.remove_edge(v,w)
         
