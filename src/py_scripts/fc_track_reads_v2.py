@@ -25,7 +25,7 @@ PypeMPWorkflow.setNumThreadAllowed(12, 12)
 wf = PypeMPWorkflow()
 
 rawread_db = makePypeLocalFile( os.path.join( rawread_dir, "raw_reads.db" ) )
-rawread_id_file = makePypeLocalFile( os.path.join( rawread_dir, "raw_reads_ids" ) )
+rawread_id_file = makePypeLocalFile( os.path.join( rawread_dir, "raw_read_ids" ) )
 
 @PypeTask( inputs = {"rawread_db": rawread_db}, 
            outputs =  {"rawread_id_file": rawread_id_file},
@@ -39,7 +39,7 @@ def dump_rawread_ids(self):
 wf.addTask( dump_rawread_ids )
 
 pread_db = makePypeLocalFile( os.path.join( pread_dir, "preads.db" ) )
-pread_id_file = makePypeLocalFile( os.path.join( pread_dir, "preads_ids" ) )
+pread_id_file = makePypeLocalFile( os.path.join( pread_dir, "pread_ids" ) )
 
 @PypeTask( inputs = {"pread_db": pread_db}, 
            outputs =  {"pread_id_file": pread_id_file},
@@ -67,10 +67,6 @@ for las_fn in glob.glob( os.path.join( pread_dir, "preads.*.las") ):
     all_pread_las_files["p_las_%s" % idx] = las_file 
 
 wf.refreshTargets() # block
-
-# need new workflow
-PypeMPWorkflow.setNumThreadAllowed(1, 1)
-wf = PypeMPWorkflow()
 
 sg_edges_list = makePypeLocalFile( os.path.join(asm_dir, "sg_edges_list") )
 utg_data = makePypeLocalFile( os.path.join(asm_dir, "utg_data") )
