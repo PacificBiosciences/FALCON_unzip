@@ -10,9 +10,16 @@ import subprocess as sp
 import shlex
 import os
 
+def make_dirs(d):
+    if not os.path.isdir(d):
+        os.makedirs(d)
+
 rawread_dir = os.path.abspath( "./0-rawreads" )
 pread_dir = os.path.abspath( "./1-preads_ovl" )
 asm_dir = os.path.abspath( "./2-asm-falcon" )
+
+read_map_dir = os.path.abspath(os.path.join(asm_dir, "read_maps"))
+make_dirs(read_map_dir)
 
 PypeMPWorkflow.setNumThreadAllowed(12, 12)
 wf = PypeMPWorkflow()
@@ -75,16 +82,16 @@ inputs = { "rawread_id_file": rawread_id_file,
            "utg_data": utg_data,
            "ctg_paths": ctg_paths }
 
-contig_to_read_map = makePypeLocalFile( os.path.join(asm_dir, "contig_to_read_map_2") )
+read_to_contig_map = makePypeLocalFile( os.path.join(read_map_dir, "read_to_contig_map") )
 
 @PypeTask( inputs = inputs, 
-           outputs = {"contig_to_read_map": contig_to_read_map}, 
+           outputs = {"read_to_contig_map": read_to_contig_map}, 
            TaskType = PypeThreadTaskBase, 
            URL = "task://localhost/get_ctg_read_map" )
-def gen_ctg_to_read_map(self):
+def generate_read_to_ctg_map(self):
     rawread_id_file = fn( self.rawread_id_file )
     pread_id_file = fn( self.pread_id_file )
-    contig_to_read_map = fn( self.contig_to_read_map )
+    read_to_contig_map = fn( self.read_to_contig_map )
     
     pread_did_to_rid = open(pread_id_file).read().split("\n")
     rid_to_oid = open(rawread_id_file).read().split("\n")
@@ -95,7 +102,7 @@ def gen_ctg_to_read_map(self):
 
     pread_to_contigs = {}
 
-    with open(contig_to_read_map, "w") as f:
+    with open(read_to_contig_map, "w") as f:
         for ctg in asm_G.ctg_data:
             rid_set = set()
             ctg_to_preads = {}
@@ -103,24 +110,22 @@ def gen_ctg_to_read_map(self):
                 continue
             ctg_g = asm_G.get_sg_for_ctg(ctg)
             for n in ctg_g.nodes():
-                frg0 = int(n.split(":")[0])
+                pid = int(n.split(":")[0])
 
-                rid = pread_did_to_rid[frg0].split("/")[1]
+                rid = pread_did_to_rid[pid].split("/")[1]
                 rid = int(int(rid)/10)
                 oid = rid_to_oid[rid]
-                k = (frg0, rid, oid)
+                k = (pid, rid, oid)
                 pread_to_contigs.setdefault( k, set() )
                 pread_to_contigs[ k ].add( ctg )
 
 
         for k in pread_to_contigs:
-            frg0, rid, oid = k
+            pid, rid, oid = k
             for ctg in list(pread_to_contigs[ k ]):
-                print >>f, "%09d %09d %s %s" % (frg0, rid, oid, ctg)
+                print >>f, "%09d %09d %s %s" % (pid, rid, oid, ctg)
 
-wf.addTask( gen_ctg_to_read_map )
-wf.refreshTargets()
-
+wf.addTask( generate_read_to_ctg_map )
 
 def dump_rawread_to_ctg(self):
     rawread_db = fn( self.rawread_db )
@@ -128,7 +133,7 @@ def dump_rawread_to_ctg(self):
     #pread_id_file = fn( self.pread_id_file )
     las_file = fn( self.las_file )
     rawread_to_contig_file = fn( self.rawread_to_contig_file )
-    contig_to_read_map = fn( self.contig_to_read_map )
+    read_to_contig_map = fn( self.read_to_contig_map )
     rid_to_oid = open(rawread_id_file).read().split("\n")
     #pread_did_to_rid = open(pread_id_file).read().split("\n")
 
@@ -139,10 +144,10 @@ def dump_rawread_to_ctg(self):
     a_id = None
     rid_to_contigs = {}
     
-    with open(contig_to_read_map) as f:
+    with open(read_to_contig_map) as f:
         for row in f:
             row = row.strip().split()
-            frg0, rid, oid, ctg = row
+            pid, rid, oid, ctg = row
             rid = int(rid)
             rid_to_contigs.setdefault( rid, (oid, set() ) )
             rid_to_contigs[ rid ][1].add( ctg )
@@ -203,10 +208,10 @@ def dump_pread_to_ctg(self):
     pread_db = fn( self.pread_db )
     rawread_id_file = fn( self.rawread_id_file )
     pread_id_file = fn( self.pread_id_file )
-    contig_to_read_map = fn( self.contig_to_read_map )
+    read_to_contig_map = fn( self.read_to_contig_map )
     las_file = fn( self.las_file )
     pread_to_contig_file = fn( self.pread_to_contig_file )
-    contig_to_read_map = fn( self.contig_to_read_map )
+    read_to_contig_map = fn( self.read_to_contig_map )
     
     pid_to_rid = open(pread_id_file).read().split("\n")
     rid_to_oid = open(rawread_id_file).read().split("\n")
@@ -218,7 +223,7 @@ def dump_pread_to_ctg(self):
     a_id = None
     pid_to_contigs = {}
     
-    with open(contig_to_read_map) as f:
+    with open(read_to_contig_map) as f:
         for row in f:
             row = row.strip().split()
             pid, rid, oid, ctg = row
@@ -288,10 +293,10 @@ for las_key, las_file in all_raw_las_files.items():
     las_fn = fn(las_file)
     idx = las_fn.split("/")[-1] # well, we will use regex someday to parse to get the number
     idx = int(idx.split(".")[1]) 
-    rawread_to_contig_file = makePypeLocalFile(os.path.join(asm_dir, "raw_read_to_contigs.%s" % idx))
+    rawread_to_contig_file = makePypeLocalFile(os.path.join(read_map_dir, "rawread_to_contigs.%s" % idx))
     make_dump_rawread_to_ctg = PypeTask( inputs = { "las_file": las_file, 
                                                     "rawread_db": rawread_db, 
-                                                    "contig_to_read_map": contig_to_read_map, 
+                                                    "read_to_contig_map": read_to_contig_map, 
                                                     "rawread_id_file": rawread_id_file,
                                                     "pread_id_file": pread_id_file},
                                       outputs = { "rawread_to_contig_file": rawread_to_contig_file },
@@ -304,10 +309,10 @@ for las_key, las_file in all_pread_las_files.items():
     las_fn = fn(las_file)
     idx = las_fn.split("/")[-1] # well, we will use regex someday to parse to get the number
     idx = int(idx.split(".")[1]) 
-    pread_to_contig_file = makePypeLocalFile(os.path.join(asm_dir, "pread_to_contigs.%s" % idx))
+    pread_to_contig_file = makePypeLocalFile(os.path.join(read_map_dir, "pread_to_contigs.%s" % idx))
     make_dump_pread_to_ctg = PypeTask( inputs = { "las_file": las_file, 
                                                   "pread_db": pread_db, 
-                                                  "contig_to_read_map": contig_to_read_map, 
+                                                  "read_to_contig_map": read_to_contig_map, 
                                                   "rawread_id_file": rawread_id_file,
                                                   "pread_id_file": pread_id_file},
                                       outputs = { "pread_to_contig_file": pread_to_contig_file },
