@@ -10,92 +10,22 @@ import subprocess as sp
 import shlex
 import os
 
+def make_dirs(d):
+    if not os.path.isdir(d):
+        os.makedirs(d)
+
 rawread_dir = os.path.abspath( "./0-rawreads" )
 pread_dir = os.path.abspath( "./1-preads_ovl" )
 asm_dir = os.path.abspath( "./2-asm-falcon" )
 
+read_map_dir = os.path.abspath(os.path.join(asm_dir, "read_maps"))
+make_dirs(read_map_dir)
+
 PypeMPWorkflow.setNumThreadAllowed(12, 12)
 wf = PypeMPWorkflow()
 
-def dump_rawread_map(self):
-    rawread_db = fn( self.rawread_db )
-    las_file = fn( self.las_file )
-    ovlp_map_id_file = fn( self.ovlp_map_id_file )
-
-    ovlp_data = []
-    ovlp_count = 0
-    longest_ovlp = 0
-    a_id = None
-    with open(ovlp_map_id_file, "w") as f:
-        for row in sp.check_output(shlex.split("LA4Falcon -mo %s %s " % (rawread_db, las_file)) ).splitlines():
-            row = row.strip().split()
-            if row[-1] == "contained":
-                continue
-
-            if row[0] != a_id:
-                if a_id != None and len(ovlp_data) > 0:
-                    ovlp_data.sort()
-                    out_ids = []
-                    for d in ovlp_data[:100]:
-                        out_ids.append( d[1][1] ) #query id
-                    print >>f, a_id, ovlp_count, " ".join(out_ids)
-                ovlp_count = 0
-                longest_ovlp = 0
-                ovlp_data = []
-                a_id = row[0]
-
-            if int(row[9]) > 500 or int(row[11]) - int(row[10]) > 500: #only output contained relationship
-                continue
-            ovlp_len  = int(row[6]) - int(row[5])
-            ovlp_data.append( (-ovlp_len, row) )
-            ovlp_count += 1
-
-        # last element    
-        if a_id != None and len(ovlp_data) > 0:
-            ovlp_data.sort()
-            out_ids = []
-            for d in ovlp_data[:100]:
-                out_ids.append( d[1][1] ) #query id
-            print >>f, row[0], ovlp_count, " ".join(out_ids)
-
-def dump_pread_map(self):
-    pread_db = fn( self.pread_db )
-    las_file = fn( self.las_file )
-    ovlp_map_id_file = fn( self.ovlp_map_id_file )
-    a_id = None
-    with open(ovlp_map_id_file, "w") as f:
-        for row in sp.check_output(shlex.split("LA4Falcon -mo %s %s " % (pread_db, las_file)) ).splitlines():
-            row = row.strip().split()
-
-            if row[0] != a_id:
-                if a_id != None and len(ovlp_data) > 0:
-                    #ovlp_data.sort()
-                    out_ids = []
-                    for d in ovlp_data:
-                        out_ids.append( d[1][1] ) #query id
-                    print >>f, a_id, ovlp_count, " ".join(out_ids)
-                ovlp_count = 0
-                longest_ovlp = 0
-                ovlp_data = []
-                a_id = row[0]
-
-            if int(row[9]) > 5 or int(row[11]) - int(row[10]) > 5: #only output contained relationship
-                continue
-            ovlp_len  = int(row[6]) - int(row[5])
-            ovlp_data.append( (-ovlp_len, row) )
-            ovlp_count += 1
-
-        # last element    
-        if a_id != None and len(ovlp_data) > 0:
-            ovlp_data.sort()
-            out_ids = []
-            for d in ovlp_data:
-                out_ids.append( d[1][1] ) #query id
-            print >>f, row[0], ovlp_count, " ".join(out_ids)
-
-
 rawread_db = makePypeLocalFile( os.path.join( rawread_dir, "raw_reads.db" ) )
-rawread_id_file = makePypeLocalFile( os.path.join( rawread_dir, "raw_reads_ids" ) )
+rawread_id_file = makePypeLocalFile( os.path.join( rawread_dir, "raw_read_ids" ) )
 
 @PypeTask( inputs = {"rawread_db": rawread_db}, 
            outputs =  {"rawread_id_file": rawread_id_file},
@@ -109,7 +39,7 @@ def dump_rawread_ids(self):
 wf.addTask( dump_rawread_ids )
 
 pread_db = makePypeLocalFile( os.path.join( pread_dir, "preads.db" ) )
-pread_id_file = makePypeLocalFile( os.path.join( pread_dir, "preads_ids" ) )
+pread_id_file = makePypeLocalFile( os.path.join( pread_dir, "pread_ids" ) )
 
 @PypeTask( inputs = {"pread_db": pread_db}, 
            outputs =  {"pread_id_file": pread_id_file},
@@ -123,44 +53,20 @@ def dump_pread_ids(self):
 wf.addTask( dump_pread_ids )
 
 all_raw_las_files = {}
-all_r_ovlp_map_files = {}
 for las_fn in glob.glob( os.path.join( rawread_dir, "raw_reads.*.las") ):
     idx = las_fn.split("/")[-1] # well, we will use regex someday to parse to get the number
     idx = int(idx.split(".")[1]) 
-
     las_file = makePypeLocalFile( las_fn )
     all_raw_las_files["r_las_%s" % idx] = las_file 
-    ovlp_map_id_file  = makePypeLocalFile( os.path.join( rawread_dir, "ovlp_map.%s" % idx ) ) 
-    all_r_ovlp_map_files["r_idmap_%s" % idx ] = ovlp_map_id_file
-    make_rawread_map_task = PypeTask( inputs = { "las_file": las_file, "rawread_db": rawread_db },
-                                      outputs = { "ovlp_map_id_file": ovlp_map_id_file },
-                                      TaskType = PypeThreadTaskBase,
-                                      URL = "task://localhost/r_ovlp_map.%s" % idx )
-    rawread_map_task = make_rawread_map_task(dump_rawread_map)                            
-    wf.addTask( rawread_map_task )
 
-all_p_las_files = {}
-all_p_ovlp_map_files = {}
+all_pread_las_files = {}
 for las_fn in glob.glob( os.path.join( pread_dir, "preads.*.las") ):
     idx = las_fn.split("/")[-1] # well, we will use regex someday to parse to get the number
     idx = int(idx.split(".")[1]) 
-
     las_file = makePypeLocalFile( las_fn )
-    all_p_las_files["p_las_%s" % idx] = las_file 
-    ovlp_map_id_file  = makePypeLocalFile( os.path.join( pread_dir, "ovlp_map.%s" % idx ) ) 
-    all_p_ovlp_map_files["p_idmap_%s" % idx ] = ovlp_map_id_file
-    make_pread_map_task = PypeTask( inputs = { "las_file": las_file, "pread_db": pread_db },
-                                    outputs = { "ovlp_map_id_file": ovlp_map_id_file },
-                                    TaskType = PypeThreadTaskBase,
-                                    URL = "task://localhost/p_ovlp_map.%s" % idx )
-    pread_map_task = make_pread_map_task(dump_pread_map)                            
-    wf.addTask( pread_map_task )
+    all_pread_las_files["p_las_%s" % idx] = las_file 
 
 wf.refreshTargets() # block
-
-# need new workflow
-PypeMPWorkflow.setNumThreadAllowed(1, 1)
-wf = PypeMPWorkflow()
 
 sg_edges_list = makePypeLocalFile( os.path.join(asm_dir, "sg_edges_list") )
 utg_data = makePypeLocalFile( os.path.join(asm_dir, "utg_data") )
@@ -172,51 +78,27 @@ inputs = { "rawread_id_file": rawread_id_file,
            "utg_data": utg_data,
            "ctg_paths": ctg_paths }
 
-parameters = { "p_ovlp_files": [ fn(fobj) for fobj in all_p_ovlp_map_files.values() ],
-               "r_ovlp_files": [ fn(fobj) for fobj in all_r_ovlp_map_files.values() ] }  # put these files as parameters to avoid tracking them
-
-contig_to_read_map = makePypeLocalFile( os.path.join(asm_dir, "contig_to_read_map") )
+read_to_contig_map = makePypeLocalFile( os.path.join(read_map_dir, "read_to_contig_map") )
 
 @PypeTask( inputs = inputs, 
-           outputs = {"contig_to_read_map": contig_to_read_map}, 
-           parameters = parameters,  
+           outputs = {"read_to_contig_map": read_to_contig_map}, 
            TaskType = PypeThreadTaskBase, 
            URL = "task://localhost/get_ctg_read_map" )
-def gen_ctg_to_read_map(self):
+def generate_read_to_ctg_map(self):
     rawread_id_file = fn( self.rawread_id_file )
     pread_id_file = fn( self.pread_id_file )
-    contig_to_read_map = fn( self.contig_to_read_map )
-    p_ovlp_map_files = self.parameters["p_ovlp_files"]
-    r_ovlp_map_files = self.parameters["r_ovlp_files"]
-    p_ovlp_map_files.sort()
-    r_ovlp_map_files.sort()
+    read_to_contig_map = fn( self.read_to_contig_map )
     
     pread_did_to_rid = open(pread_id_file).read().split("\n")
     rid_to_oid = open(rawread_id_file).read().split("\n")
-    
-    
-    overlap_pread = {}
-    for ovlp_fn in p_ovlp_map_files:
-        with open(ovlp_fn) as f:
-            for row in f:
-                row = row.strip().split()
-                overlap_pread[int(row[0])] = set([ int(c) for c in row[2:] ])
 
-    overlap_rawread = {}
-    for ovlp_fn in r_ovlp_map_files:
-        with open(ovlp_fn) as f:
-            for row in f:
-                row = row.strip().split()
-                overlap_rawread[int(row[0])] = set([ int(c) for c in row[2:] ])
-
-    ctg_to_preads = {}
-    rid_set = set()
     asm_G = AsmGraph(fn(self.sg_edges_list), 
-                       fn(self.utg_data),
-                       fn(self.ctg_paths) )
+                     fn(self.utg_data),
+                     fn(self.ctg_paths) )
 
+    pread_to_contigs = {}
 
-    with open(contig_to_read_map, "w") as f:
+    with open(read_to_contig_map, "w") as f:
         for ctg in asm_G.ctg_data:
             rid_set = set()
             ctg_to_preads = {}
@@ -224,41 +106,215 @@ def gen_ctg_to_read_map(self):
                 continue
             ctg_g = asm_G.get_sg_for_ctg(ctg)
             for n in ctg_g.nodes():
-                frg0 = int(n.split(":")[0])
+                pid = int(n.split(":")[0])
 
-                ctg_to_preads.setdefault( ctg, set() )
-
-                rid = pread_did_to_rid[frg0].split("/")[1]
+                rid = pread_did_to_rid[pid].split("/")[1]
                 rid = int(int(rid)/10)
                 oid = rid_to_oid[rid]
-                ctg_to_preads[ctg].add((0, frg0, rid, oid))
-                rid_set.add(frg0)
-
-                for frg in list(overlap_pread.get(frg0, set())):
-                    rid = pread_did_to_rid[frg].split("/")[1]
-                    rid = int(int(rid) / 10)
-                    if rid in rid_set:
-                        continue
-                    oid = rid_to_oid[rid]
-                    ctg_to_preads[ctg].add((1, frg, rid, oid))
-                    rid_set.add(rid)
+                k = (pid, rid, oid)
+                pread_to_contigs.setdefault( k, set() )
+                pread_to_contigs[ k ].add( ctg )
 
 
-            for i in range(2,4):
-                for r in list(ctg_to_preads[ctg]):
-                    class_, pid, rid0, oid = r
+        for k in pread_to_contigs:
+            pid, rid, oid = k
+            for ctg in list(pread_to_contigs[ k ]):
+                print >>f, "%09d %09d %s %s" % (pid, rid, oid, ctg)
 
-                    for rid in list(overlap_rawread.get(rid0,set())):
-                        if rid in rid_set:
-                            continue
-                        oid = rid_to_oid[rid]
-                        ctg_to_preads[ctg].add((i ,rid0, rid, oid))
-                        rid_set.add(rid)
+wf.addTask( generate_read_to_ctg_map )
+
+def dump_rawread_to_ctg(self):
+    rawread_db = fn( self.rawread_db )
+    rawread_id_file = fn( self.rawread_id_file )
+    #pread_id_file = fn( self.pread_id_file )
+    las_file = fn( self.las_file )
+    rawread_to_contig_file = fn( self.rawread_to_contig_file )
+    read_to_contig_map = fn( self.read_to_contig_map )
+    rid_to_oid = open(rawread_id_file).read().split("\n")
+    #pread_did_to_rid = open(pread_id_file).read().split("\n")
 
 
-            for ctg in ctg_to_preads:
-                for r in list(ctg_to_preads[ctg]):
-                    print >>f, ctg, r[0], "%09d" % r[1], "%09d" % r[2], r[3]
+    ovlp_data = []
+    ovlp_count = 0
+    longest_ovlp = 0
+    a_id = None
+    rid_to_contigs = {}
+    
+    with open(read_to_contig_map) as f:
+        for row in f:
+            row = row.strip().split()
+            pid, rid, oid, ctg = row
+            rid = int(rid)
+            rid_to_contigs.setdefault( rid, (oid, set() ) )
+            rid_to_contigs[ rid ][1].add( ctg )
 
-wf.addTask( gen_ctg_to_read_map )
-wf.refreshTargets()
+    with open(rawread_to_contig_file, "w") as f:
+        ovlp_data = {}
+        cur_read_id = None
+        for row in sp.check_output(shlex.split("LA4Falcon -mo %s %s " % (rawread_db, las_file)) ).splitlines():
+
+            row = row.strip().split()
+            t_id = int(row[1])
+            q_id = int(row[0])
+            if q_id != cur_read_id:
+                if cur_read_id == None:
+                    cur_read_id = q_id
+                else:
+                    if len(ovlp_data) == 0:
+                        o_id = rid_to_oid[ cur_read_id ]
+                        print >>f, "%09d %s %s %d %d %d %d" % (cur_read_id, o_id, "NA", 0, 0, 0, 0)
+                    else:
+                        ovlp_v = ovlp_data.values()
+                        ovlp_v.sort()
+                        rank = 0
+                        for score, count, q_id_, o_id, ctg, in_ctg in ovlp_v:
+                            print >> f, "%09d %s %s %d %d %d %d" % (q_id_, o_id, ctg, count, rank, score, in_ctg)
+                            rank += 1
+                    ovlp_data = {}
+                    cur_read_id = q_id
+
+            if q_id in rid_to_contigs and len(ovlp_data) == 0: #if the query is in some contig....
+                t_o_id, ctgs = rid_to_contigs[ q_id ]
+                o_id = rid_to_oid[ q_id ]
+                for ctg in list(ctgs):
+                    ovlp_data.setdefault(ctg, [0, 0, q_id, o_id, ctg, 1])
+                    ovlp_data[ctg][0] = -int(row[7]) 
+                    ovlp_data[ctg][1] += 1
+
+            if t_id not in rid_to_contigs:
+                continue
+
+            t_o_id, ctgs = rid_to_contigs[ t_id ]
+            o_id = rid_to_oid[ q_id ]
+            
+            for ctg in list(ctgs):
+                ovlp_data.setdefault(ctg, [0, 0, q_id, o_id, ctg, 0])
+                ovlp_data[ctg][0] += int(row[2])
+                ovlp_data[ctg][1] += 1
+
+        if len(ovlp_data) != 0:
+            ovlp_v = ovlp_data.values()
+            ovlp_v.sort()
+            rank = 0
+            for score, count, q_id_, o_id, ctg, in_ctg in ovlp_v:
+                print >> f, "%09d %s %s %d %d %d %d" % (q_id_, o_id, ctg, count, rank, score, in_ctg)
+                rank += 1
+
+def dump_pread_to_ctg(self):
+    pread_db = fn( self.pread_db )
+    rawread_id_file = fn( self.rawread_id_file )
+    pread_id_file = fn( self.pread_id_file )
+    read_to_contig_map = fn( self.read_to_contig_map )
+    las_file = fn( self.las_file )
+    pread_to_contig_file = fn( self.pread_to_contig_file )
+    read_to_contig_map = fn( self.read_to_contig_map )
+    
+    pid_to_rid = open(pread_id_file).read().split("\n")
+    rid_to_oid = open(rawread_id_file).read().split("\n")
+
+
+    ovlp_data = []
+    ovlp_count = 0
+    longest_ovlp = 0
+    a_id = None
+    pid_to_contigs = {}
+    
+    with open(read_to_contig_map) as f:
+        for row in f:
+            row = row.strip().split()
+            pid, rid, oid, ctg = row
+            pid = int(pid)
+            pid_to_contigs.setdefault( pid, (oid, set() ) )
+            pid_to_contigs[ pid ][1].add( ctg )
+
+    with open(pread_to_contig_file, "w") as f:
+        ovlp_data = {}
+        cur_read_id = None
+        for row in sp.check_output(shlex.split("LA4Falcon -mo %s %s " % (pread_db, las_file)) ).splitlines():
+
+            row = row.strip().split()
+            t_id = int(row[1])
+            q_id = int(row[0])
+            if q_id != cur_read_id:
+                if cur_read_id == None:
+                    cur_read_id = q_id
+                else:
+                    if len(ovlp_data) == 0:
+                        rid = pid_to_rid[cur_read_id].split("/")[1]
+                        rid = int(int(rid)/10)
+                        o_id = rid_to_oid[ rid ]
+                        print >>f, "%09d %s %s %d %d %d %d" % (cur_read_id, o_id, "NA", 0, 0, 0, 0)
+                    else:
+                        ovlp_v = ovlp_data.values()
+                        ovlp_v.sort()
+                        rank = 0
+                        for score, count, q_id_, o_id, ctg, in_ctg in ovlp_v:
+                            print >> f, "%09d %s %s %d %d %d %d" % (q_id_, o_id, ctg, count, rank, score, in_ctg)
+                            rank += 1
+                    ovlp_data = {}
+                    cur_read_id = q_id
+
+            if q_id in pid_to_contigs and len(ovlp_data) == 0: #if the query is in some contig....
+                t_o_id, ctgs = pid_to_contigs[ q_id ]
+                rid = pid_to_rid[q_id].split("/")[1]
+                rid = int(int(rid)/10)
+                o_id = rid_to_oid[ rid ]
+                for ctg in list(ctgs):
+                    ovlp_data.setdefault(ctg, [0, 0, q_id, o_id, ctg, 1])
+                    ovlp_data[ctg][0] = -int(row[7]) 
+                    ovlp_data[ctg][1] += 1
+
+            if t_id not in pid_to_contigs:
+                continue
+
+            t_o_id, ctgs = pid_to_contigs[ t_id ]
+            rid = pid_to_rid[q_id].split("/")[1]
+            rid = int(int(rid)/10)
+            o_id = rid_to_oid[ rid ]
+            
+            for ctg in list(ctgs):
+                ovlp_data.setdefault(ctg, [0, 0, q_id, o_id, ctg, 0])
+                ovlp_data[ctg][0] += int(row[2])
+                ovlp_data[ctg][1] += 1
+
+        if len(ovlp_data) != 0:
+            ovlp_v = ovlp_data.values()
+            ovlp_v.sort()
+            rank = 0
+            for score, count, q_id_, o_id, ctg, in_ctg in ovlp_v:
+                print >> f, "%09d %s %s %d %d %d %d" % (q_id_, o_id, ctg, count, rank, score, in_ctg)
+                rank += 1
+
+for las_key, las_file in all_raw_las_files.items():
+    las_fn = fn(las_file)
+    idx = las_fn.split("/")[-1] # well, we will use regex someday to parse to get the number
+    idx = int(idx.split(".")[1]) 
+    rawread_to_contig_file = makePypeLocalFile(os.path.join(read_map_dir, "rawread_to_contigs.%s" % idx))
+    make_dump_rawread_to_ctg = PypeTask( inputs = { "las_file": las_file, 
+                                                    "rawread_db": rawread_db, 
+                                                    "read_to_contig_map": read_to_contig_map, 
+                                                    "rawread_id_file": rawread_id_file,
+                                                    "pread_id_file": pread_id_file},
+                                      outputs = { "rawread_to_contig_file": rawread_to_contig_file },
+                                      TaskType = PypeThreadTaskBase,
+                                      URL = "task://localhost/r_read_to_contigs.%s" % idx )
+    dump_rawread_to_ctg_task = make_dump_rawread_to_ctg(dump_rawread_to_ctg)                           
+    wf.addTask( dump_rawread_to_ctg_task )
+
+for las_key, las_file in all_pread_las_files.items():
+    las_fn = fn(las_file)
+    idx = las_fn.split("/")[-1] # well, we will use regex someday to parse to get the number
+    idx = int(idx.split(".")[1]) 
+    pread_to_contig_file = makePypeLocalFile(os.path.join(read_map_dir, "pread_to_contigs.%s" % idx))
+    make_dump_pread_to_ctg = PypeTask( inputs = { "las_file": las_file, 
+                                                  "pread_db": pread_db, 
+                                                  "read_to_contig_map": read_to_contig_map, 
+                                                  "rawread_id_file": rawread_id_file,
+                                                  "pread_id_file": pread_id_file},
+                                      outputs = { "pread_to_contig_file": pread_to_contig_file },
+                                      TaskType = PypeThreadTaskBase,
+                                      URL = "task://localhost/pread_to_contigs.%s" % idx )
+    dump_pread_to_ctg_task = make_dump_pread_to_ctg(dump_pread_to_ctg)                           
+    wf.addTask( dump_pread_to_ctg_task )
+
+wf.refreshTargets() # block

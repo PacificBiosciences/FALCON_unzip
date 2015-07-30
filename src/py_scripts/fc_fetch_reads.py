@@ -1,5 +1,6 @@
 from falcon_kit.FastaReader import FastaReader
 import os
+import glob
 import sys
 
 if __name__ == "__main__":
@@ -11,23 +12,24 @@ if __name__ == "__main__":
     #                    help='number of processes used for generating consensus')
     parser.add_argument('--fofn', type=str, help='path to the file of the list of raw read fasta files', required=True)
     parser.add_argument('--ctg_fa', type=str, help='path to the contig fasta file', required=True)
-    parser.add_argument('--ctg_id', type=str, help='contig identifier in the bam file', required=True)
-    parser.add_argument('--ctg_map', type=str, help='path to the read-contig map files', required=True) 
+    parser.add_argument('--ctg_id', type=str, help='contig identifier in the contig fasta file', required=True)
+    parser.add_argument('--read_map_dir', type=str, help='path to the read-contig map directory', required=True) 
     parser.add_argument('--base_dir', type=str, default="./", help='the output base_dir, default to current working directory')
 
     args = parser.parse_args()
     read_fofn = args.fofn
     ctg_fa = args.ctg_fa
     ctg_id = args.ctg_id
-    ctg_map = args.ctg_map
+    read_map_dir = args.read_map_dir
     base_dir = args.base_dir
 
     read_set = set()
-    with open(ctg_map, "r") as f:
-        for row in f:
-            row = row.strip().split()
-            if row[0].startswith(ctg_id) and int(row[1]) <= 3:
-                read_set.add(row[4])
+    for map_fn in glob.glob(os.path.join(read_map_dir,"rawread_to_contigs.*")):
+        with open(map_fn, "r") as f:
+            for row in f:
+                row = row.strip().split()
+                if row[2].startswith(ctg_id) and int(row[4]) == 0:
+                    read_set.add(row[1])
                 
     ref_fasta = FastaReader(ctg_fa)
     ref_out = open( os.path.join( base_dir, "%s_ref.fa" % ctg_id), "w" )
