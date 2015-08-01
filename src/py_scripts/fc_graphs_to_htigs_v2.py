@@ -248,7 +248,7 @@ if __name__ == "__main__":
                 else:
                     seq.append("".join([ RCMAP[c] for c in seqs[ seq_id ][ s:t:-1 ] ]))
                 print >> h_tig_path, "%s_%03d" % (ctg_id, h_tig_id), v, w, seq_id, s, t, edge_data[1], edge_data[2], "%d %d" % arid_to_phase.get(seq_id, (-1,0))
-            print >> h_tig_fa, ">%s_%04d" % (ctg_id, h_tig_id)
+            print >> h_tig_fa, ">%s_%03d" % (ctg_id, h_tig_id)
             print >> h_tig_fa, "".join(seq)
             h_tig_id += 1
 
