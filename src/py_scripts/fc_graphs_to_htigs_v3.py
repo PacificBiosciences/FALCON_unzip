@@ -102,6 +102,7 @@ if __name__ == "__main__":
 
         edge_data = h_asm_G.sg_edges[ (v, w) ]
 
+
         if edge_data[-1] != "G":
             continue
 
@@ -119,6 +120,46 @@ if __name__ == "__main__":
         if rw not in PG_nodes:
             sg.add_node( rw, label= "%d_%d" % arid_to_phase[wrid], phase="%d_%d" % arid_to_phase[wrid], src="H" )
         sg.add_edge(rw, rv, src="H", cross_phase = cross_phase)
+
+    for v, w in h_asm_G.sg_edges:
+        vrid = v[:9]
+        wrid = w[:9]
+        
+        if (v, w) in PG_edges:
+            if p_asm_G.sg_edges[(v,w)][-1] == "G":
+                continue
+
+        edge_data = h_asm_G.sg_edges[ (v, w) ]
+        if sg.in_degree(w) == 0:
+            cross_phase = "Y"
+            if v not in PG_nodes:
+                sg.add_node( v, label= "%d_%d" % arid_to_phase[vrid], phase="%d_%d" % arid_to_phase[vrid], src="H" )
+            if w not in PG_nodes:
+                sg.add_node( w, label= "%d_%d" % arid_to_phase[wrid], phase="%d_%d" % arid_to_phase[wrid], src="H" )
+            sg.add_edge(v, w, src="ext", cross_phase = cross_phase)
+            rv = reverse_end(v)
+            rw = reverse_end(w)
+            if rv not in PG_nodes:
+                sg.add_node( rv, label= "%d_%d" % arid_to_phase[vrid], phase="%d_%d" % arid_to_phase[vrid], src="H" )
+            if rw not in PG_nodes:
+                sg.add_node( rw, label= "%d_%d" % arid_to_phase[wrid], phase="%d_%d" % arid_to_phase[wrid], src="H" )
+            sg.add_edge(rw, rv, src="ext", cross_phase = cross_phase)
+
+        if sg.out_degree(v) == 0:
+            cross_phase = "Y"
+            if v not in PG_nodes:
+                sg.add_node( v, label= "%d_%d" % arid_to_phase[vrid], phase="%d_%d" % arid_to_phase[vrid], src="H" )
+            if w not in PG_nodes:
+                sg.add_node( w, label= "%d_%d" % arid_to_phase[wrid], phase="%d_%d" % arid_to_phase[wrid], src="H" )
+            sg.add_edge(v, w, src="ext", cross_phase = cross_phase)
+            rv = reverse_end(v)
+            rw = reverse_end(w)
+            if rv not in PG_nodes:
+                sg.add_node( rv, label= "%d_%d" % arid_to_phase[vrid], phase="%d_%d" % arid_to_phase[vrid], src="H" )
+            if rw not in PG_nodes:
+                sg.add_node( rw, label= "%d_%d" % arid_to_phase[wrid], phase="%d_%d" % arid_to_phase[wrid], src="H" )
+            sg.add_edge(rw, rv, src="ext", cross_phase = cross_phase)
+
 
     nx.write_gexf(sg, "full_g.gexf")
     
@@ -215,6 +256,7 @@ if __name__ == "__main__":
             else:
                 seq.append("".join([ RCMAP[c] for c in seqs[ seq_id ][ s:t:-1 ] ]))
             print >>p_tig_path, "%s" % ctg_id, v, w, seq_id, s, t, edge_data[1], edge_data[2], "%d %d" % arid_to_phase.get(seq_id, (-1,0))
+            sg[v][w]["tig_id"] = "%s" % ctg_id
 
             rv, rw = reverse_end(v), reverse_end(w)
             edges_to_remove.add( (v, w) )
@@ -239,25 +281,26 @@ if __name__ == "__main__":
     h_tig_path = open("h_ctg_path","w")
     h_tig_fa = open("h_ctg.fa","w")
     edges_to_remove = set()
+
+    labelled_node = set()
     with open("h_ctg_edges","w") as f:
         h_tig_id = 1
         h_paths = {}
         for sub_hg in nx.weakly_connected_component_subgraphs(sg2):
             sources = [n for n in sub_hg.nodes() if sub_hg.in_degree(n) == 0 and n in p_path_nodes]
             sinks = [n for n in sub_hg.nodes() if sub_hg.out_degree(n) == 0 and n in p_path_nodes]
+            if len(sources) > 0 and len(sinks) > 0:
+                sources = [n for n in sub_hg.nodes() if sub_hg.in_degree(n) == 0]
+                sinks = [n for n in sub_hg.nodes() if sub_hg.out_degree(n) == 0]
+
+            if len(set(sources) & labelled_node) != 0:
+                continue
+
             longest = [] 
             for s in sources:
                 for t in sinks:
                     try:
-                        paths = [nx.shortest_path(sub_hg, s, t)]
-                        count = 0
-                        path = []
-                        for p in paths:
-                            if len(p) > len(path):
-                                path = p
-                            count += 1
-                            if count > 5:
-                                break
+                        path = nx.shortest_path(sub_hg, s, t, weight="score")
                     except nx.exception.NetworkXNoPath:
                         path = []
                         pass
@@ -265,11 +308,16 @@ if __name__ == "__main__":
                         longest = path
             if len(longest) == 0:
                 continue
-            h_paths[ ( longest[0], longest[1] ) ] = longest
+            s = longest[0]
+            t = longest[1]
+            h_paths[ ( s, t ) ] = longest
+            
+            labelled_node.add(s)
+            rs = reverse_end(s)
+            labelled_node.add(rs)
         
         for s, t in h_paths:
             longest = h_paths[ (s, t) ]
-
             seq = []
             for v, w in zip(longest[:-1], longest[1:]):
                 sg[v][w]["h_edge"] = 1
@@ -288,12 +336,13 @@ if __name__ == "__main__":
                 else:
                     edge_data = h_asm_G.sg_edges[ (v,w) ]
 
-                seq_id, s, t = edge_data[0]
-                if s < t:
-                    seq.append(seqs[ seq_id ][ s:t ])
+                seq_id, sp, tp = edge_data[0]
+                if sp < tp:
+                    seq.append(seqs[ seq_id ][ sp:tp ])
                 else:
-                    seq.append("".join([ RCMAP[c] for c in seqs[ seq_id ][ s:t:-1 ] ]))
-                print >> h_tig_path, "%s_%03d" % (ctg_id, h_tig_id), v, w, seq_id, s, t, edge_data[1], edge_data[2], "%d %d" % arid_to_phase.get(seq_id, (-1,0))
+                    seq.append("".join([ RCMAP[c] for c in seqs[ seq_id ][ sp:tp:-1 ] ]))
+                print >> h_tig_path, "%s_%03d" % (ctg_id, h_tig_id), v, w, seq_id, sp, tp, edge_data[1], edge_data[2], "%d %d" % arid_to_phase.get(seq_id, (-1,0))
+                sg[v][w]["tig_id"] = "%s_%03d" % (ctg_id, h_tig_id)
 
                 rv, rw = reverse_end(v), reverse_end(w)
                 edges_to_remove.add( (v, w) )
@@ -302,6 +351,7 @@ if __name__ == "__main__":
             print >> h_tig_fa, ">%s_%03d" % (ctg_id, h_tig_id)
             print >> h_tig_fa, "".join(seq)
             h_tig_id += 1
+
 
     h_tig_fa.close()
     h_tig_path.close()
