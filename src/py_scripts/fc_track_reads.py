@@ -100,8 +100,6 @@ def generate_read_to_ctg_map(self):
 
     with open(read_to_contig_map, "w") as f:
         for ctg in asm_G.ctg_data:
-            rid_set = set()
-            ctg_to_preads = {}
             if ctg[-1] == "R":
                 continue
             ctg_g = asm_G.get_sg_for_ctg(ctg)
@@ -151,7 +149,7 @@ def dump_rawread_to_ctg(self):
     with open(rawread_to_contig_file, "w") as f:
         ovlp_data = {}
         cur_read_id = None
-        for row in sp.check_output(shlex.split("LA4Falcon -mo %s %s " % (rawread_db, las_file)) ).splitlines():
+        for row in sp.check_output(shlex.split("LA4Falcon -m %s %s " % (rawread_db, las_file)) ).splitlines():
 
             row = row.strip().split()
             t_id = int(row[1])
