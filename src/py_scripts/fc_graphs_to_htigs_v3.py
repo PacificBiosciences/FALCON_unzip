@@ -77,15 +77,28 @@ if __name__ == "__main__":
         else:
             cross_phase = "N"
 
-        sg.add_node( v, label= "%d_%d" % vphase, phase="%d_%d" % vphase, src="P" )
-        sg.add_node( w, label= "%d_%d" % wphase, phase="%d_%d" % wphase, src="P" )
+        sg.add_node( v, label= "%d_%d" % vphase, 
+                        phase="%d_%d" % vphase, 
+                        src="P" )
+
+        sg.add_node( w, label= "%d_%d" % wphase, 
+                        phase="%d_%d" % wphase, 
+                        src="P" )
+
         sg.add_edge(v, w, src="OP", cross_phase = cross_phase)
 
         # we need to add the complimentary edges as the ctg_graph does not contain the dual edges
         rv = reverse_end(v)
         rw = reverse_end(w)
-        sg.add_node( rv, label= "%d_%d" % vphase, phase="%d_%d" % vphase, src="P" )
-        sg.add_node( rw, label= "%d_%d" % wphase, phase="%d_%d" % wphase, src="P" )
+
+        sg.add_node( rv, label= "%d_%d" % vphase, 
+                         phase="%d_%d" % vphase, 
+                         src="P" )
+
+        sg.add_node( rw, label= "%d_%d" % wphase, 
+                         phase="%d_%d" % wphase, 
+                         src="P" )
+
         sg.add_edge(rw, rv, src="OP", cross_phase = cross_phase)
 
     PG_nodes = set(sg.nodes())
@@ -108,17 +121,29 @@ if __name__ == "__main__":
 
         cross_phase = "N"
         if v not in PG_nodes:
-            sg.add_node( v, label= "%d_%d" % arid_to_phase[vrid], phase="%d_%d" % arid_to_phase[vrid], src="H" )
+            sg.add_node( v, label= "%d_%d" % arid_to_phase[vrid], 
+                            phase="%d_%d" % arid_to_phase[vrid], 
+                            src="H" )
+
         if w not in PG_nodes:
-            sg.add_node( w, label= "%d_%d" % arid_to_phase[wrid], phase="%d_%d" % arid_to_phase[wrid], src="H" )
+            sg.add_node( w, label= "%d_%d" % arid_to_phase[wrid], 
+                            phase="%d_%d" % arid_to_phase[wrid], 
+                            src="H" )
+
         sg.add_edge(v, w, src="H", cross_phase = cross_phase)
 
         rv = reverse_end(v)
         rw = reverse_end(w)
         if rv not in PG_nodes:
-            sg.add_node( rv, label= "%d_%d" % arid_to_phase[vrid], phase="%d_%d" % arid_to_phase[vrid], src="H" )
+            sg.add_node( rv, label= "%d_%d" % arid_to_phase[vrid], 
+                             phase="%d_%d" % arid_to_phase[vrid], 
+                             src="H" )
+
         if rw not in PG_nodes:
-            sg.add_node( rw, label= "%d_%d" % arid_to_phase[wrid], phase="%d_%d" % arid_to_phase[wrid], src="H" )
+            sg.add_node( rw, label= "%d_%d" % arid_to_phase[wrid], 
+                             phase="%d_%d" % arid_to_phase[wrid], 
+                             src="H" )
+
         sg.add_edge(rw, rv, src="H", cross_phase = cross_phase)
 
     for v, w in h_asm_G.sg_edges:
@@ -130,34 +155,61 @@ if __name__ == "__main__":
                 continue
 
         edge_data = h_asm_G.sg_edges[ (v, w) ]
+
         if sg.in_degree(w) == 0:
             cross_phase = "Y"
             if v not in PG_nodes:
-                sg.add_node( v, label= "%d_%d" % arid_to_phase[vrid], phase="%d_%d" % arid_to_phase[vrid], src="H" )
+                sg.add_node( v, label= "%d_%d" % arid_to_phase[vrid], 
+                                phase="%d_%d" % arid_to_phase[vrid], 
+                                src="H" )
+
             if w not in PG_nodes:
-                sg.add_node( w, label= "%d_%d" % arid_to_phase[wrid], phase="%d_%d" % arid_to_phase[wrid], src="H" )
+                sg.add_node( w, label= "%d_%d" % arid_to_phase[wrid], 
+                                phase="%d_%d" % arid_to_phase[wrid], 
+                                src="H" )
+
             sg.add_edge(v, w, src="ext", cross_phase = cross_phase)
+
             rv = reverse_end(v)
             rw = reverse_end(w)
             if rv not in PG_nodes:
-                sg.add_node( rv, label= "%d_%d" % arid_to_phase[vrid], phase="%d_%d" % arid_to_phase[vrid], src="H" )
+                sg.add_node( rv, label= "%d_%d" % arid_to_phase[vrid], 
+                                 phase="%d_%d" % arid_to_phase[vrid], 
+                                 src="H" )
+
             if rw not in PG_nodes:
-                sg.add_node( rw, label= "%d_%d" % arid_to_phase[wrid], phase="%d_%d" % arid_to_phase[wrid], src="H" )
+                sg.add_node( rw, label= "%d_%d" % arid_to_phase[wrid], 
+                                 phase="%d_%d" % arid_to_phase[wrid], 
+                                 src="H" )
+
             sg.add_edge(rw, rv, src="ext", cross_phase = cross_phase)
 
         if sg.out_degree(v) == 0:
             cross_phase = "Y"
             if v not in PG_nodes:
-                sg.add_node( v, label= "%d_%d" % arid_to_phase[vrid], phase="%d_%d" % arid_to_phase[vrid], src="H" )
+                sg.add_node( v, label= "%d_%d" % arid_to_phase[vrid], 
+                                phase="%d_%d" % arid_to_phase[vrid], 
+                                src="H" )
+
             if w not in PG_nodes:
-                sg.add_node( w, label= "%d_%d" % arid_to_phase[wrid], phase="%d_%d" % arid_to_phase[wrid], src="H" )
+                sg.add_node( w, label= "%d_%d" % arid_to_phase[wrid], 
+                                phase="%d_%d" % arid_to_phase[wrid], 
+                                src="H" )
+
             sg.add_edge(v, w, src="ext", cross_phase = cross_phase)
+
             rv = reverse_end(v)
             rw = reverse_end(w)
             if rv not in PG_nodes:
-                sg.add_node( rv, label= "%d_%d" % arid_to_phase[vrid], phase="%d_%d" % arid_to_phase[vrid], src="H" )
+                sg.add_node( rv, label= "%d_%d" % arid_to_phase[vrid], 
+                                 phase="%d_%d" % arid_to_phase[vrid], 
+                                 src="H" )
+
             if rw not in PG_nodes:
-                sg.add_node( rw, label= "%d_%d" % arid_to_phase[wrid], phase="%d_%d" % arid_to_phase[wrid], src="H" )
+                sg.add_node( rw, label= "%d_%d" % arid_to_phase[wrid], 
+                                 phase="%d_%d" % arid_to_phase[wrid], 
+                                 src="H" )
+
             sg.add_edge(rw, rv, src="ext", cross_phase = cross_phase)
 
 
