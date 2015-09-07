@@ -361,7 +361,7 @@ if __name__ == "__main__":
 
 
     h_tig_path = open("h_ctg_path","w")
-    h_tig_fa = open("h_ctg.fa","w")
+    h_tig_fa = open("h_ctg_all.fa","w")
     edges_to_remove = set()
 
     labelled_node = set()
