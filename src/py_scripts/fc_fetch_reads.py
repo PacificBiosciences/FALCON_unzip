@@ -24,10 +24,21 @@ if __name__ == "__main__":
     base_dir = args.base_dir
 
     read_set = set()
+
     for map_fn in glob.glob(os.path.join(read_map_dir,"rawread_to_contigs.*")):
         with open(map_fn, "r") as f:
             for row in f:
                 row = row.strip().split()
+                if row[2].startswith(ctg_id) and int(row[4]) == 0:
+                    read_set.add(row[1])
+
+    for map_fn in glob.glob(os.path.join(read_map_dir,"pread_to_contigs.*")):
+        with open(map_fn, "r") as f:
+            for row in f:
+                row = row.strip().split()
+
+                if row[1] in read_set and int(row[4]) != 0: #not the best p-read
+                    read_set.remove(row[1])
                 if row[2].startswith(ctg_id) and int(row[4]) == 0:
                     read_set.add(row[1])
                 
