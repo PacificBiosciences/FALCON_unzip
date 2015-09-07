@@ -90,7 +90,6 @@ if __name__ == "__main__":
         # we need to add the complimentary edges as the ctg_graph does not contain the dual edges
         rv = reverse_end(v)
         rw = reverse_end(w)
-
         sg.add_node( rv, label= "%d_%d" % vphase, 
                          phase="%d_%d" % vphase, 
                          src="P" )
@@ -101,6 +100,12 @@ if __name__ == "__main__":
 
         sg.add_edge(rw, rv, src="OP", cross_phase = cross_phase)
 
+    node_to_connect_component = {}
+    component_id = 0
+    for sub_g in nx.weakly_connected_component_subgraphs(sg):
+        for n in sub_g.nodes():
+            node_to_connect_component[n] = component_id
+        component_id += 1
     PG_nodes = set(sg.nodes())
     PG_edges = set(sg.edges())
 
@@ -112,9 +117,15 @@ if __name__ == "__main__":
         if (v, w) in PG_edges:
             if p_asm_G.sg_edges[(v,w)][-1] == "G":
                 continue
+       
+        # we need to avoid edge caused by invert repeats which connects the dual component
+        # TODO: we need to detect and remove connection caused by simple multi-node path rather 
+        # than just one single edge
+        if reverse_end(w) in node_to_connect_component and v in node_to_connect_component:
+            if node_to_connect_component[reverse_end(w)] == node_to_connect_component[v]:
+                continue
 
         edge_data = h_asm_G.sg_edges[ (v, w) ]
-
 
         if edge_data[-1] != "G":
             continue
@@ -146,6 +157,7 @@ if __name__ == "__main__":
 
         sg.add_edge(rw, rv, src="H", cross_phase = cross_phase)
 
+    sg0 = sg.copy()
     for v, w in h_asm_G.sg_edges:
         vrid = v[:9]
         wrid = w[:9]
@@ -156,7 +168,7 @@ if __name__ == "__main__":
 
         edge_data = h_asm_G.sg_edges[ (v, w) ]
 
-        if sg.in_degree(w) == 0:
+        if sg0.in_degree(w) == 0:
             cross_phase = "Y"
             if v not in PG_nodes:
                 sg.add_node( v, label= "%d_%d" % arid_to_phase[vrid], 
@@ -184,7 +196,7 @@ if __name__ == "__main__":
 
             sg.add_edge(rw, rv, src="ext", cross_phase = cross_phase)
 
-        if sg.out_degree(v) == 0:
+        if sg0.out_degree(v) == 0:
             cross_phase = "Y"
             if v not in PG_nodes:
                 sg.add_node( v, label= "%d_%d" % arid_to_phase[vrid], 
@@ -286,7 +298,8 @@ if __name__ == "__main__":
     sg2 = sg.copy()
     p_tig_path = open("p_ctg_path","w")
     p_tig_fa = open("p_ctg.fa","w")
-    edges_to_remove = set()
+    edges_to_remove1 = set()
+    edges_to_remove2 = set()
     with open("p_ctg_edges","w") as f:
         seq = []
         for v, w in s_path_edges:
@@ -311,8 +324,8 @@ if __name__ == "__main__":
             sg[v][w]["tig_id"] = "%s" % ctg_id
 
             rv, rw = reverse_end(v), reverse_end(w)
-            edges_to_remove.add( (v, w) )
-            edges_to_remove.add( (rw, rv) )
+            edges_to_remove1.add( (v, w) )
+            edges_to_remove2.add( (rw, rv) )
 
         print >> p_tig_fa, ">%s" % ctg_id
         print >> p_tig_fa, "".join(seq)
@@ -320,13 +333,30 @@ if __name__ == "__main__":
     p_tig_fa.close()
     p_tig_path.close()
 
-    for v, w in list(edges_to_remove):
+    reachable1 = nx.descendants(sg2, s_node)
+    sg2_r = sg2.reverse()
+    reachable2 = nx.descendants(sg2_r, t_node)
+
+    reachable_all = reachable1 | reachable2
+    reachable_both = reachable1 & reachable2
+
+
+    for v, w in list(edges_to_remove2):
         sg2.remove_edge( v, w )
+
+    for v, w in list(edges_to_remove1):
+        sg2.remove_edge( v, w )
+
+    for v in sg2.nodes():
+        if v not in reachable_all:
+            sg2.remove_node(v)
 
     for v in sg2.nodes():
         if sg2.out_degree(v) == 0 and sg2.in_degree(v) == 0:
             sg2.remove_node(v)
 
+    nx.write_gexf(sg2, "%s_1.gexf" % ctg_id)
+    
     p_path_nodes = set(s_path)
 
 
@@ -339,11 +369,14 @@ if __name__ == "__main__":
         h_tig_id = 1
         h_paths = {}
         for sub_hg in nx.weakly_connected_component_subgraphs(sg2):
-            sources = [n for n in sub_hg.nodes() if sub_hg.in_degree(n) == 0 and n in p_path_nodes]
-            sinks = [n for n in sub_hg.nodes() if sub_hg.out_degree(n) == 0 and n in p_path_nodes]
-            if len(sources) > 0 and len(sinks) > 0:
-                sources = [n for n in sub_hg.nodes() if sub_hg.in_degree(n) == 0]
-                sinks = [n for n in sub_hg.nodes() if sub_hg.out_degree(n) == 0]
+            sources = [n for n in sub_hg.nodes() if sub_hg.in_degree(n) != 1 and n in reachable_both]
+            sinks = [n for n in sub_hg.nodes() if sub_hg.out_degree(n) != 1 and n in reachable_both]
+            if len(sources) == 0 and len(sinks) == 0:
+                continue
+            if len(sources) == 0:
+                sources = [n for n in sub_hg.nodes() if sub_hg.in_degree(n) != 1]
+            if len(sinks) == 0:
+                sinks = [n for n in sub_hg.nodes() if sub_hg.out_degree(n) != 1]
 
             if len(set(sources) & labelled_node) != 0:
                 continue
@@ -358,7 +391,7 @@ if __name__ == "__main__":
                         pass
                     if len(path) > len(longest):
                         longest = path
-            if len(longest) == 0:
+            if len(longest) < 2:
                 continue
             s = longest[0]
             t = longest[1]
@@ -407,15 +440,6 @@ if __name__ == "__main__":
 
     h_tig_fa.close()
     h_tig_path.close()
-
-    for v, w in list(edges_to_remove):
-        sg2.remove_edge( v, w )
-
-    for v in sg2.nodes():
-        if sg2.out_degree(v) == 0 and sg2.in_degree(v) == 0:
-            sg2.remove_node(v)
-    
-
     for v, w in sg.edges():
         if "h_edge" not in sg[v][w]:
             sg[v][w]["h_edge"] = 0
@@ -424,5 +448,4 @@ if __name__ == "__main__":
         if "h_edge" not in sg2[v][w]:
             sg2[v][w]["h_edge"] = 0
 
-    nx.write_gexf(sg2, "%s_1.gexf" % ctg_id)
     nx.write_gexf(sg, "%s_0.gexf" % ctg_id)
