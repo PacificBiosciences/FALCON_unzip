@@ -251,6 +251,11 @@ if __name__ == "__main__":
     sg2 = sg.copy()
     edge_to_remove = set()
     for v, w in sg2.edges():
+        if sg2[v][w]["src"] == "ext":
+            edge_to_remove.add( (v, w) )
+            rv, rw = reverse_end(v), reverse_end(w)
+            edge_to_remove.add( (rw, rv) )
+
         if sg2.node[v]["phase"] ==  sg2.node[w]["phase"]:
             continue
         flag1 = 0
@@ -294,6 +299,7 @@ if __name__ == "__main__":
         all_read_ids.add(w)
 
     seqs = load_sg_seq(all_read_ids, fasta_fn)
+    
     #output the updated primary contig
     sg2 = sg.copy()
     p_tig_path = open("p_ctg_path","w")
@@ -358,6 +364,7 @@ if __name__ == "__main__":
     nx.write_gexf(sg2, "%s_1.gexf" % ctg_id)
     
     p_path_nodes = set(s_path)
+    p_path_rc_nodes = set( [reverse_end(v) for v in s_path] )
 
 
     h_tig_path = open("h_ctg_path","w")
@@ -392,6 +399,8 @@ if __name__ == "__main__":
                     if len(path) > len(longest):
                         longest = path
             if len(longest) < 2:
+                continue
+            if len(set(longest) & p_path_rc_nodes) != 0:
                 continue
             s = longest[0]
             t = longest[1]
