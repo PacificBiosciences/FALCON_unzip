@@ -100,12 +100,6 @@ if __name__ == "__main__":
 
         sg.add_edge(rw, rv, src="OP", cross_phase = cross_phase)
 
-    node_to_connect_component = {}
-    component_id = 0
-    for sub_g in nx.weakly_connected_component_subgraphs(sg):
-        for n in sub_g.nodes():
-            node_to_connect_component[n] = component_id
-        component_id += 1
     PG_nodes = set(sg.nodes())
     PG_edges = set(sg.edges())
 
@@ -116,13 +110,6 @@ if __name__ == "__main__":
         
         if (v, w) in PG_edges:
             if p_asm_G.sg_edges[(v,w)][-1] == "G":
-                continue
-       
-        # we need to avoid edge caused by invert repeats which connects the dual component
-        # TODO: we need to detect and remove connection caused by simple multi-node path rather 
-        # than just one single edge
-        if reverse_end(w) in node_to_connect_component and v in node_to_connect_component:
-            if node_to_connect_component[reverse_end(w)] == node_to_connect_component[v]:
                 continue
 
         edge_data = h_asm_G.sg_edges[ (v, w) ]
@@ -224,6 +211,54 @@ if __name__ == "__main__":
 
             sg.add_edge(rw, rv, src="ext", cross_phase = cross_phase)
 
+    sg2 = sg.copy()
+    ctg_nodes_r = set([ reverse_end(v) for v in list(ctg_nodes) ])
+    for v, w in ctg_G.edges():
+        sg2.remove_edge(v, w)
+        rv, rw = reverse_end(v), reverse_end(w)
+        sg2.remove_edge(rw, rv)
+
+    nodes_to_remove = set()
+    edges_to_remove = set()
+    for sub_g in nx.weakly_connected_component_subgraphs(sg2):
+        sub_g_nodes = set(sub_g.nodes())
+        if len(sub_g_nodes & ctg_nodes_r) > 0 and len(sub_g_nodes & ctg_nodes) > 0:
+            # remove cross edge
+            sources = [n for n in sub_g.nodes() if sub_g.in_degree(n) == 0 ]
+            sinks = [n for n in sub_g.nodes() if sub_g.out_degree(n) == 0 ]
+            edges_to_keep = set()
+            for v in sources:
+                for w in sinks:
+                    path = []
+                    if v in ctg_nodes and w not in ctg_nodes_r:
+                        path = nx.shortest_path( sub_g, v, w ) 
+                    elif v not in ctg_nodes and w in ctg_nodes_r:
+                        path = nx.shortest_path( sub_g, v, w )
+                    if len(path) >= 2:
+                        v1 = path[0]
+                        for w1 in path[1:]:
+                            edges_to_keep.add( (v1, w1) )
+                            v1 = w1
+            for v, w in sub_g.edges():
+                if (v, w) not in edges_to_keep:
+                    edges_to_remove.add( (v, w) )
+                    rv, rw = reverse_end(v), reverse_end(w)
+                    edges_to_remove.add( (rw, rv) )
+
+
+        if len(sub_g_nodes & ctg_nodes_r) == 0 and len(sub_g_nodes & ctg_nodes) == 0:
+            nodes_to_remove.update( sub_g_nodes )
+            nodes_to_remove.update( set( [reverse_end(v) for v in list(sub_g_nodes)] ) )
+
+    for v, w in list(edges_to_remove):
+        sg.remove_edge(v ,w)
+
+    for v in nodes_to_remove:
+        sg.remove_node(v)
+
+    for v in sg.nodes():
+        if sg.out_degree(v) == 0 and sg.in_degree(v) == 0:
+            sg.remove_node(v)
 
     nx.write_gexf(sg, "full_g.gexf")
     
@@ -236,16 +271,16 @@ if __name__ == "__main__":
         if phase0 == phase1:
             sg[v][w]["weight"] = 10
             sg[v][w]["score"] = 1
-            sg[v][w]["label"] = "t0"
+            sg[v][w]["label"] = "type0" 
         else:
             if phase0[0] == phase1[0]:
                 sg[v][w]["weight"] = 1
                 sg[v][w]["score"] = 100000
-                sg[v][w]["label"] = "t1"
+                sg[v][w]["label"] = "type1"
             else:
                 sg[v][w]["weight"] = 5
                 sg[v][w]["score"] = 50
-                sg[v][w]["label"] = "t2"
+                sg[v][w]["label"] = "type2"
 
 
     sg2 = sg.copy()
@@ -366,7 +401,10 @@ if __name__ == "__main__":
     p_path_nodes = set(s_path)
     p_path_rc_nodes = set( [reverse_end(v) for v in s_path] )
 
+    for v in p_asm_G.get_sg_for_ctg(ctg_id).nodes():
+        p_path_rc_nodes.add( reverse_end(v) )
 
+    
     h_tig_path = open("h_ctg_path","w")
     h_tig_fa = open("h_ctg_all.fa","w")
     edges_to_remove = set()
@@ -400,10 +438,12 @@ if __name__ == "__main__":
                         longest = path
             if len(longest) < 2:
                 continue
+
             if len(set(longest) & p_path_rc_nodes) != 0:
                 continue
+        
             s = longest[0]
-            t = longest[1]
+            t = longest[-1]
             h_paths[ ( s, t ) ] = longest
             
             labelled_node.add(s)
