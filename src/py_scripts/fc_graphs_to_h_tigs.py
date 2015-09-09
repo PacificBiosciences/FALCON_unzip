@@ -217,6 +217,9 @@ if __name__ == "__main__":
         sg2.remove_edge(v, w)
         rv, rw = reverse_end(v), reverse_end(w)
         sg2.remove_edge(rw, rv)
+    for v in sg2.nodes():
+        if sg2.out_degree(v) == 0 and sg2.in_degree(v) == 0:
+            sg2.remove_node(v)
 
     nodes_to_remove = set()
     edges_to_remove = set()
@@ -224,20 +227,29 @@ if __name__ == "__main__":
         sub_g_nodes = set(sub_g.nodes())
         if len(sub_g_nodes & ctg_nodes_r) > 0 and len(sub_g_nodes & ctg_nodes) > 0:
             # remove cross edge
-            sources = [n for n in sub_g.nodes() if sub_g.in_degree(n) == 0 ]
-            sinks = [n for n in sub_g.nodes() if sub_g.out_degree(n) == 0 ]
+            sources = [n for n in sub_g.nodes() if sub_g.in_degree(n) == 0 or n in ctg_nodes or n in ctg_nodes_r ]
+            sinks = [n for n in sub_g.nodes() if sub_g.out_degree(n) == 0 or n in ctg_nodes or n in ctg_nodes_r ]
             edges_to_keep = set()
             for v in sources:
                 for w in sinks:
                     path = []
                     if v in ctg_nodes and w not in ctg_nodes_r:
-                        path = nx.shortest_path( sub_g, v, w ) 
+                        try:
+                            path = nx.shortest_path( sub_g, v, w ) 
+                        except nx.exception.NetworkXNoPath:
+                            path = []
                     elif v not in ctg_nodes and w in ctg_nodes_r:
-                        path = nx.shortest_path( sub_g, v, w )
+                        try:
+                            path = nx.shortest_path( sub_g, v, w )
+                        except nx.exception.NetworkXNoPath:
+                            path = []
+
                     if len(path) >= 2:
                         v1 = path[0]
                         for w1 in path[1:]:
                             edges_to_keep.add( (v1, w1) )
+                            rv1, rw1 = reverse_end(v1), reverse_end(w1)
+                            edges_to_keep.add( (rw1, rv1) )
                             v1 = w1
             for v, w in sub_g.edges():
                 if (v, w) not in edges_to_keep:
@@ -251,7 +263,7 @@ if __name__ == "__main__":
             nodes_to_remove.update( set( [reverse_end(v) for v in list(sub_g_nodes)] ) )
 
     for v, w in list(edges_to_remove):
-        sg.remove_edge(v ,w)
+        sg.remove_edge(v, w)
 
     for v in nodes_to_remove:
         sg.remove_node(v)
