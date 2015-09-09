@@ -11,7 +11,7 @@ install_requires=[ "networkx >= 1.7" ]
 scripts = glob.glob("src/py_scripts/*.py")
 
 setup(name='falcon_kit_phasing',
-      version='0.3.0',
+      version='0.1.0',
       description='phasing module for Falcon.',
       author='Jason Chin',
       author_email='jchin@pacificbiosciences.com',
