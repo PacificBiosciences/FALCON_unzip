@@ -71,12 +71,13 @@ wf.refreshTargets() # block
 
 h_ctg_edges = makePypeLocalFile( os.path.join(asm_dir, "h_ctg_edges") )
 p_ctg_edges = makePypeLocalFile( os.path.join(asm_dir, "p_ctg_edges") )
-
+h_ctg_ids = makePypeLocalFile( os.path.join(asm_dir, "h_ctg_ids") )
 
 inputs = { "rawread_id_file": rawread_id_file,
            "pread_id_file": pread_id_file,
            "h_ctg_edges": h_ctg_edges,
-           "p_ctg_edges": p_ctg_edges}
+           "p_ctg_edges": p_ctg_edges,
+           "h_ctg_ids": h_ctg_ids}
 
 read_to_contig_map = makePypeLocalFile( os.path.join(read_map_dir, "read_to_contig_map") )
 
@@ -96,6 +97,12 @@ def generate_read_to_ctg_map(self):
     h_ctg_edges = fn( self.h_ctg_edges )
     p_ctg_edges = fn( self.p_ctg_edges )
 
+    h_ctg_ids = set()
+    with open(fn(self.h_ctg_ids)) as f:
+        for row in f:
+            row = row.strip()
+            h_ctg_ids.add( row )
+
     pread_to_contigs = {}
 
     for fnanme in ( p_ctg_edges, h_ctg_edges):
@@ -103,6 +110,8 @@ def generate_read_to_ctg_map(self):
             for row in f:
                 row = row.strip().split()
                 ctg = row[0]
+                if len(ctg.split("_")) > 1 and ctg not in h_ctg_ids:
+                    continue
                 n1 = row[1]
                 n2 = row[2]
                 pid1 = int(n1.split(":")[0])
@@ -336,6 +345,7 @@ def dump_pread_to_ctg(self):
 
 
 phased_reads =  makePypeLocalFile(os.path.join(asm_dir, "phased_reads"))
+
 
 for las_key, las_file in all_raw_las_files.items():
     las_fn = fn(las_file)
