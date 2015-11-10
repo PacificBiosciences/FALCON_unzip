@@ -421,6 +421,8 @@ def get_phased_reads(self):
     vmap_fn = fn(self.vmap_file)
     p_variant_fn = fn(self.phased_variant_file)
 
+    ctg_id = parameters["ctg_id"]
+
     phased_read_fn = fn(self.phased_read_file) 
 
     rid_map = {}
@@ -467,9 +469,9 @@ def get_phased_reads(self):
             pl.sort()
             for p in pl:
                 if vl.get( (p,0), 0) - vl.get( (p,1), 0) > 1:
-                    print >> out_f, r, p, 0, vl.get( (p,0), 0), vl.get( (p,1), 0), rid_map[r]
+                    print >> out_f, r, ctg_id, p, 0, vl.get( (p,0), 0), vl.get( (p,1), 0), rid_map[r]
                 elif vl.get( (p,1), 0) - vl.get( (p,0), 0) > 1:
-                    print >> out_f, r, p, 1, vl.get( (p,0), 0), vl.get( (p,1), 0), rid_map[r]
+                    print >> out_f, r, ctg_id, p, 1, vl.get( (p,0), 0), vl.get( (p,1), 0), rid_map[r]
 
 if __name__ == "__main__":
     import argparse
@@ -551,6 +553,7 @@ if __name__ == "__main__":
                                                  "q_id_map_file": q_id_map_file, 
                                                  "phased_variant_file": phased_variant_file },
                                       outputs = { "phased_read_file": phased_read_file },
+                                      parameters = {"ctg_id": ctg_id},
                                       TaskType = PypeThreadTaskBase,
                                       URL = "task://localhost/get_phased_reads") (get_phased_reads)
     wf.addTasks([get_phased_reads_task])

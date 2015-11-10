@@ -23,7 +23,7 @@ if __name__ == "__main__":
     with open(phased_reads) as f:
         for row in f:
             row = row.strip().split()
-            rid_to_phase[row[5]] = (int(row[1]), int(row[2]))
+            rid_to_phase[row[6]] = (int(row[2]), int(row[3]))
 
     arid_to_phase = {}        
     for map_fn in glob.glob(os.path.join(read_map_dir,"pread_to_contigs.*")):

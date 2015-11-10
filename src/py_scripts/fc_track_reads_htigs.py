@@ -16,7 +16,7 @@ def make_dirs(d):
 
 rawread_dir = os.path.abspath( "./0-rawreads" )
 pread_dir = os.path.abspath( "./1-preads_ovl" )
-asm_dir = os.path.abspath( os.path.join("./3-falcon_unzip/", sys.argv[1]) )
+asm_dir = os.path.abspath( os.path.join("./3-unzip/", sys.argv[1]) )
 
 read_map_dir = os.path.abspath(os.path.join(asm_dir, "read_maps"))
 make_dirs(read_map_dir)
