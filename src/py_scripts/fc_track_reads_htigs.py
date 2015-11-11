@@ -16,7 +16,7 @@ def make_dirs(d):
 
 rawread_dir = os.path.abspath( "./0-rawreads" )
 pread_dir = os.path.abspath( "./1-preads_ovl" )
-asm_dir = os.path.abspath( os.path.join("./3-unzip/", sys.argv[1]) )
+asm_dir = os.path.abspath( os.path.join("./3-unzip/") )
 
 read_map_dir = os.path.abspath(os.path.join(asm_dir, "read_maps"))
 make_dirs(read_map_dir)
@@ -69,9 +69,9 @@ for las_fn in glob.glob( os.path.join( pread_dir, "preads.*.las") ):
 wf.refreshTargets() # block
 
 
-h_ctg_edges = makePypeLocalFile( os.path.join(asm_dir, "h_ctg_edges") )
-p_ctg_edges = makePypeLocalFile( os.path.join(asm_dir, "p_ctg_edges") )
-h_ctg_ids = makePypeLocalFile( os.path.join(asm_dir, "h_ctg_ids") )
+h_ctg_edges = makePypeLocalFile( os.path.join(asm_dir, "all_h_ctg_edges") )
+p_ctg_edges = makePypeLocalFile( os.path.join(asm_dir, "all_p_ctg_edges") )
+h_ctg_ids = makePypeLocalFile( os.path.join(asm_dir, "all_h_ctg_ids") )
 
 inputs = { "rawread_id_file": rawread_id_file,
            "pread_id_file": pread_id_file,
@@ -165,11 +165,11 @@ def dump_rawread_to_ctg(self):
     with open(phased_read_file) as f:
         for row in f:
             row = row.strip().split()
-            block, phase = row[1:3]
+            ctg_id, block, phase = row[1:4]
             oid = row[5]
             block = int(block)
             phase = int(phase)
-            oid_to_phase[ oid ] = (block, phase)
+            oid_to_phase[ oid ] = (ctg_id, block, phase)
 
 
     with open(rawread_to_contig_file, "w") as f:
@@ -266,11 +266,11 @@ def dump_pread_to_ctg(self):
     with open(phased_read_file) as f:
         for row in f:
             row = row.strip().split()
-            block, phase = row[1:3]
+            ctg_id, block, phase = row[1:4]
             oid = row[5]
             block = int(block)
             phase = int(phase)
-            oid_to_phase[ oid ] = (block, phase)
+            oid_to_phase[ oid ] = (ctg_id, block, phase)
 
     with open(pread_to_contig_file, "w") as f:
         ovlp_data = {}
@@ -317,12 +317,12 @@ def dump_pread_to_ctg(self):
             q_phase = oid_to_phase.get( rid_to_oid[ q_rid ], None )
             
             if q_phase != None:
-                block, phase = q_phase
+                ctg_id, block, phase = q_phase
                 if block != -1:
                     t_rid = int( int(pid_to_rid[t_id].split("/")[1])/10 )
                     t_phase = oid_to_phase.get( rid_to_oid[ t_rid ], None )
                     if t_phase != None:
-                        if t_phase[0] == block and t_phase[1] != phase:
+                        if t_phase[0] == ctg_id and t_phase[1] == block and t_phase[2] != phase:
                             continue
 
             t_o_id, ctgs = pid_to_contigs[ t_id ]
@@ -344,7 +344,7 @@ def dump_pread_to_ctg(self):
                 rank += 1
 
 
-phased_reads =  makePypeLocalFile(os.path.join(asm_dir, "phased_reads"))
+phased_reads =  makePypeLocalFile(os.path.join(asm_dir, "all_phased_reads"))
 
 
 for las_key, las_file in all_raw_las_files.items():

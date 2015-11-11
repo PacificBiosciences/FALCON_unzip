@@ -30,6 +30,13 @@ for row in open(sys.argv[1]):
         header["RG"].extend( samfile.header["RG"] )
     samfile.close()
 
+PG = header.pop("PG") #remove PG line as there might be a bug that generates no readable chrs
+#print PG 
+
+base_dir = os.getcwd()
+#outfile = pysam.AlignmentFile( os.path.join(base_dir, "header.sam" ), "wh", header=header )
+#outfile.close()
+
 ctgs = read_partition.keys()
 ctgs.sort()
 selected_ctgs = set()
@@ -39,10 +46,8 @@ for ctg in ctgs:
     if len(picked_reads) > 20:
         selected_ctgs.add(ctg)
 
-
 outfile = {}
 
-base_dir = os.getcwd()
 for row in open(sys.argv[1]):
     fn = row.strip()
     samfile = pysam.AlignmentFile(fn, "rb", check_sq = False )
@@ -56,9 +61,8 @@ for row in open(sys.argv[1]):
             continue
         if ctg not in outfile:
             outfile[ctg] = pysam.AlignmentFile( os.path.join(base_dir, "4-quiver/reads/", "%s.sam" % ctg), "wh", header=header )
-
         outfile[ctg].write(r)
+    samfile.close()
 
 for ctg in outfile:
     outfile[ctg].close()
-

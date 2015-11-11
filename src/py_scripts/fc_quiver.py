@@ -172,7 +172,8 @@ def task_run_quiver(self):
             --minAnchorSize=12 --maxDivergence=30 --concordant --algorithm=blasr\
             --algorithmOptions=-useQuality --maxHits=1 --hitPolicy=random --seed=1\
             {ctg_id}.bam {ref_fasta} aln-{ctg_id}.bam".format( pbalign=pbalign , ctg_id = ctg_id, ref_fasta = ref_fasta)) 
-    script.append( "{variantCaller} -x 5 -q 20 -v -j 24 -r {ref_fasta} aln-{ctg_id}.bam\
+    script.append( "{makePbi} --referenceFasta {ref_fasta} aln-{ctg_id}.bam".format(makePbi = makePbi, ref_fasta = ref_fasta, ctg_id = ctg_id) ) 
+    script.append( "{variantCaller} -x 5 -X 120 -q 20 -v -j 24 -r {ref_fasta} aln-{ctg_id}.bam\
             -o {cns_fasta} -o {cns_fastq}".format( variantCaller = variantCaller, ctg_id = ctg_id, ref_fasta = ref_fasta, 
                                                    cns_fasta=cns_fasta, cns_fastq=cns_fastq ))
 
@@ -233,10 +234,10 @@ if __name__ == "__main__":
                 p_ctg_out.append( (cns_fasta, cns_fastq) )
             if ctg_types[ctg_id] == "h":
                 h_ctg_out.append( (cns_fasta, cns_fastq) )
-
-            with open(fn(ref_fasta),"w") as f:
-                print >>f, ">"+ctg_id
-                print >>f, sequence
+            if not os.path.exists(fn(ref_fasta)):
+                with open(fn(ref_fasta),"w") as f:
+                    print >>f, ">"+ctg_id
+                    print >>f, sequence
             parameters = {"job_uid":"q-"+ctg_id, "wd": wd, "sge_quiver":sge_quiver, "ctg_id": ctg_id, 
                           "smrt_bin":"/mnt/secondary/builds/full/3.0.0/prod/smrtanalysis_3.0.0.153854/smrtcmds/bin/"} 
             make_quiver_task = PypeTask(inputs = {"ref_fasta": ref_fasta, "read_sam": read_sam},
@@ -250,6 +251,8 @@ if __name__ == "__main__":
 
 
     wf.refreshTargets()
+    os.system("sleep 30")
+
     mkdir( "./4-quiver/cns_output" )
     os.system("rm ./4-quiver/cns_output/cns_p_ctg.fasta")
     os.system("rm ./4-quiver/cns_output/cns_p_ctg.fastq")

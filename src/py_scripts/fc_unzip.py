@@ -144,6 +144,9 @@ def task_run_blasr(self):
     wd = self.parameters["wd"]
     sge_blasr_aln = self.parameters["sge_blasr_aln"]
     ctg_id = self.parameters["ctg_id"]
+    smrt_bin = self.parameters["smrt_bin"]
+    blasr = os.path.join(smrt_bin, "blasr")
+    samtools = os.path.join( smrt_bin, "samtools")
 
     script_dir = os.path.join( wd )
     script_fn =  os.path.join( script_dir , "aln_%s.sh" % (ctg_id))
@@ -155,11 +158,15 @@ def task_run_blasr(self):
     script.append( "hostname" )
     script.append( "date" )
     script.append( "cd {wd}".format(wd = wd) )
-    script.append( "time blasr {read_fasta} {ref_fasta} -noSplitSubreads -clipping subread\
- -placeRepeatsRandomly -minPctIdentity 70.0  -minMatch 12  -nproc 24 -bam -out tmp_aln.bam".format(read_fasta = read_fasta, ref_fasta = ref_fasta) )
-    script.append( "samtools sort tmp_aln.bam {ctg_id}_sorted".format(ctg_id = ctg_id) ) 
-    script.append( "samtools index {ctg_id}_sorted.bam".format(ctg_id = ctg_id) )
-    script.append( "rm tmp_aln.bam" )
+    script.append( "time {blasr} {read_fasta} {ref_fasta} -noSplitSubreads -clipping subread\
+ -hitPolicy randombest -randomSeed 42 -bestn 1 -minPctIdentity 70.0\
+ -minMatch 12  -nproc 24 -sam -out tmp_aln.sam".format(blasr = blasr,
+                                                       read_fasta = read_fasta, 
+                                                       ref_fasta = ref_fasta) )
+
+    script.append( "{samtools} view -bS tmp_aln.sam | {samtools} sort - {ctg_id}_sorted".format( samtools = samtools, ctg_id = ctg_id) ) 
+    script.append( "{samtools} index {ctg_id}_sorted.bam".format( samtools = samtools, ctg_id = ctg_id) )
+    script.append( "rm tmp_aln.sam" )
     script.append( "date" )
     script.append( "touch {job_done}".format(job_done = job_done) )
 
@@ -251,7 +258,8 @@ if __name__ == "__main__":
         ctg_aln_out = makePypeLocalFile( os.path.join( wd, "{ctg_id}_sorted.bam".format( ctg_id = ctg_id ) ) )
         job_done = makePypeLocalFile( os.path.join( wd, "aln_{ctg_id}_done".format( ctg_id = ctg_id ) ) )
     
-        parameters = {"job_uid":"aln-"+ctg_id, "wd": wd, "sge_blasr_aln":sge_blasr_aln, "ctg_id": ctg_id} 
+        parameters = {"job_uid":"aln-"+ctg_id, "wd": wd, "sge_blasr_aln":sge_blasr_aln, "ctg_id": ctg_id,
+                "smrt_bin":"/mnt/secondary/builds/full/3.0.0/prod/smrtanalysis_3.0.0.153854/smrtcmds/bin/"} 
         make_blasr_task = PypeTask(inputs = {"ref_fasta": ref_fasta, "read_fasta": read_fasta},
                                    outputs = {"ctg_aln_out": ctg_aln_out, "job_done": job_done},
                                    parameters = parameters,
