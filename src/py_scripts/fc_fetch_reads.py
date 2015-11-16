@@ -71,6 +71,8 @@ if __name__ == "__main__":
         for ctg_id in sorted(list(all_ctg_ids)):
             if ctg_id_hits.get(ctg_id, 0) < 5:
                 continue
+            if ctg_id[-1] not in ["F", "R"]: #ignore small circle contigs, they need different approach
+                continue
             print >>f, ctg_id
 
     read_out_files = {}
