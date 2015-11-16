@@ -51,6 +51,7 @@ def dump_pread_ids(self):
     os.system("DBshow -n %s | tr -d '>' | awk '{print $1}' > %s" % (pread_db, pread_id_file) )
 
 wf.addTask( dump_pread_ids )
+wf.refreshTargets() # block
 
 all_raw_las_files = {}
 for las_fn in glob.glob( os.path.join( rawread_dir, "raw_reads.*.las") ):
@@ -66,7 +67,6 @@ for las_fn in glob.glob( os.path.join( pread_dir, "preads.*.las") ):
     las_file = makePypeLocalFile( las_fn )
     all_pread_las_files["p_las_%s" % idx] = las_file 
 
-wf.refreshTargets() # block
 
 
 h_ctg_edges = makePypeLocalFile( os.path.join(asm_dir, "all_h_ctg_edges") )
@@ -166,7 +166,7 @@ def dump_rawread_to_ctg(self):
         for row in f:
             row = row.strip().split()
             ctg_id, block, phase = row[1:4]
-            oid = row[5]
+            oid = row[6]
             block = int(block)
             phase = int(phase)
             oid_to_phase[ oid ] = (ctg_id, block, phase)
@@ -175,6 +175,7 @@ def dump_rawread_to_ctg(self):
     with open(rawread_to_contig_file, "w") as f:
         ovlp_data = {}
         cur_read_id = None
+        skip_rest = 0
         for row in sp.check_output(shlex.split("LA4Falcon -m %s %s " % (rawread_db, las_file)) ).splitlines():
 
             row = row.strip().split()
@@ -185,10 +186,9 @@ def dump_rawread_to_ctg(self):
                     cur_read_id = q_id
                 else:
                     if len(ovlp_data) == 0:
-                        pass
-                        #o_id = rid_to_oid[ cur_read_id ]
-                        #print >>f, "%09d %s %s %d %d %d %d" % (cur_read_id, o_id, "NA", 0, 0, 0, 0)
-                    else:
+                        o_id = rid_to_oid[ cur_read_id ]
+                        print >>f, "%09d %s %s %d %d %d %d" % (cur_read_id, o_id, "NA", 0, 0, 0, 0)
+                    if len(ovlp_data) != 0:
                         ovlp_v = ovlp_data.values()
                         ovlp_v.sort()
                         rank = 0
@@ -197,6 +197,7 @@ def dump_rawread_to_ctg(self):
                             rank += 1
                     ovlp_data = {}
                     cur_read_id = q_id
+                    skip_rest = 0
 
             if q_id in rid_to_contigs and len(ovlp_data) == 0: #if the query is already an edge of some contig....
                 t_o_id, ctgs = rid_to_contigs[ q_id ]
@@ -205,17 +206,21 @@ def dump_rawread_to_ctg(self):
                     ovlp_data.setdefault(ctg, [0, 0, q_id, o_id, ctg, 1])
                     ovlp_data[ctg][0] = -int(row[7]) 
                     ovlp_data[ctg][1] += 1
+                    skip_rest = 1
+
+            if skip_rest == 1:
+                continue
 
             if t_id not in rid_to_contigs:
                 continue
 
             q_phase = oid_to_phase.get( rid_to_oid[q_id], None )
             if q_phase != None:
-                block, phase = q_phase
+                ctg_id, block, phase = q_phase
                 if block != -1:
                     t_phase = oid_to_phase.get( rid_to_oid[t_id], None )
                     if t_phase != None:
-                        if t_phase[0] == block and t_phase[1] != phase:
+                        if t_phase[0] == ctg_id and t_phase[1] == block and t_phase[2] != phase:
                             continue
 
             t_o_id, ctgs = rid_to_contigs[ t_id ]
@@ -267,7 +272,7 @@ def dump_pread_to_ctg(self):
         for row in f:
             row = row.strip().split()
             ctg_id, block, phase = row[1:4]
-            oid = row[5]
+            oid = row[6]
             block = int(block)
             phase = int(phase)
             oid_to_phase[ oid ] = (ctg_id, block, phase)
@@ -275,6 +280,7 @@ def dump_pread_to_ctg(self):
     with open(pread_to_contig_file, "w") as f:
         ovlp_data = {}
         cur_read_id = None
+        skip_rest = 0
         for row in sp.check_output(shlex.split("LA4Falcon -mo %s %s " % (pread_db, las_file)) ).splitlines():
 
             row = row.strip().split()
@@ -285,11 +291,10 @@ def dump_pread_to_ctg(self):
                     cur_read_id = q_id
                 else:
                     if len(ovlp_data) == 0:
-                        pass
-                        #rid = pid_to_rid[cur_read_id].split("/")[1]
-                        #rid = int(int(rid)/10)
-                        #o_id = rid_to_oid[ rid ]
-                        #print >>f, "%09d %s %s %d %d %d %d" % (cur_read_id, o_id, "NA", 0, 0, 0, 0)
+                        rid = pid_to_rid[cur_read_id].split("/")[1]
+                        rid = int(int(rid)/10)
+                        o_id = rid_to_oid[ rid ]
+                        print >>f, "%09d %s %s %d %d %d %d" % (cur_read_id, o_id, "NA", 0, 0, 0, 0)
                     else:
                         ovlp_v = ovlp_data.values()
                         ovlp_v.sort()
@@ -299,6 +304,7 @@ def dump_pread_to_ctg(self):
                             rank += 1
                     ovlp_data = {}
                     cur_read_id = q_id
+                    skip_rest = 0
 
             if q_id in pid_to_contigs and len(ovlp_data) == 0: #if the query is in some contig....
                 t_o_id, ctgs = pid_to_contigs[ q_id ]
@@ -309,6 +315,10 @@ def dump_pread_to_ctg(self):
                     ovlp_data.setdefault(ctg, [0, 0, q_id, o_id, ctg, 1])
                     ovlp_data[ctg][0] = -int(row[7]) 
                     ovlp_data[ctg][1] += 1
+                skip_rest = 1
+
+            if skip_rest == 1:
+                continue
 
             if t_id not in pid_to_contigs:
                 continue

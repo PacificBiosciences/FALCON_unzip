@@ -14,6 +14,8 @@ for fn in glob.glob("./3-unzip/read_maps/rawread_to_contigs.*"):
             if int(row[4]) >= 1: #keep top one hits
                 continue
             ctg_id = row[2]
+            if ctg_id == "NA":
+                continue
             read_partition.setdefault( ctg_id, set() )
             r_id = row[1]
             read_partition[ ctg_id ].add( r_id )
