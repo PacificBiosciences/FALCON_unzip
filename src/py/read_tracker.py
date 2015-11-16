@@ -231,6 +231,7 @@ def generate_read_to_contig_map(rawread_dir=rawread_dir, pread_dir=pread_dir, as
         with open(pread_to_contig_file, "w") as f:
             ovlp_data = {}
             cur_read_id = None
+            skip_rest = 0
             for row in sp.check_output(shlex.split("LA4Falcon -mo %s %s " % (pread_db, las_file)) ).splitlines():
 
                 row = row.strip().split()
@@ -254,6 +255,7 @@ def generate_read_to_contig_map(rawread_dir=rawread_dir, pread_dir=pread_dir, as
                                 rank += 1
                         ovlp_data = {}
                         cur_read_id = q_id
+                        skip_rest = 0
 
                 if q_id in pid_to_contigs and len(ovlp_data) == 0: #if the query is in some contig....
                     t_o_id, ctgs = pid_to_contigs[ q_id ]
@@ -264,7 +266,11 @@ def generate_read_to_contig_map(rawread_dir=rawread_dir, pread_dir=pread_dir, as
                         ovlp_data.setdefault(ctg, [0, 0, q_id, o_id, ctg, 1])
                         ovlp_data[ctg][0] = -int(row[7]) 
                         ovlp_data[ctg][1] += 1
+                    skip_rest = 1
 
+                if skip_rest == 1:
+                    continue
+                    
                 if t_id not in pid_to_contigs:
                     continue
 
