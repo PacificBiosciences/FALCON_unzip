@@ -48,7 +48,6 @@ def filter_stage1(input_):
     try:
         ignore_rtn = []
         current_q_id = None
-        contained = False
         ave_idt = 0.0
         all_over_len = 0.0
         overlap_data = {"5p":0, "3p":0}
@@ -88,7 +87,6 @@ def filter_stage1(input_):
                 overlap_data = {"5p":0, "3p":0}
                 overlap_phase = {"5p":set(), "3p":set()}
                 current_q_id = q_id
-                contained = False
                 ave_idt = 0.0
                 all_over_len = 0.0
 
@@ -103,18 +101,17 @@ def filter_stage1(input_):
             if q_l < min_len or t_l < min_len:
                 continue
 
-            if not contained:
-                if l[-1] in ("contains", "overlap"):
-                    ave_idt += idt * overlap_len
-                    all_over_len += overlap_len
-                if q_s == 0:
-                    overlap_data["5p"] += 1
-                    if t_id in arid2phase:
-                        overlap_phase["5p"].add( arid2phase[t_id] ) 
-                elif q_e == q_l:
-                    overlap_data["3p"] += 1
-                    if t_id in arid2phase:
-                        overlap_phase["3p"].add( arid2phase[t_id] ) 
+            if l[-1] in ("contains", "overlap"):
+                ave_idt += idt * overlap_len
+                all_over_len += overlap_len
+            if q_s == 0:
+                overlap_data["5p"] += 1
+                if t_id in arid2phase:
+                    overlap_phase["5p"].add( arid2phase[t_id] ) 
+            if q_e == q_l:
+                overlap_data["3p"] += 1
+                if t_id in arid2phase:
+                    overlap_phase["3p"].add( arid2phase[t_id] ) 
 
         if q_id !=  None:
             left_count = overlap_data["5p"]
