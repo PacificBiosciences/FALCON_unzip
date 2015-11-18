@@ -8,6 +8,7 @@ import os
 import re
 import sys
 import time
+import ConfigParser
 
 support.job_type = "SGE" #tmp hack until we have a configuration parser
 
@@ -142,11 +143,15 @@ def task_run_blasr(self):
 
     job_uid = self.parameters["job_uid"]
     wd = self.parameters["wd"]
-    sge_blasr_aln = self.parameters["sge_blasr_aln"]
     ctg_id = self.parameters["ctg_id"]
-    smrt_bin = self.parameters["smrt_bin"]
+
+    config = self.parameters["config"]
+    smrt_bin = config["smrt_bin"]
+    sge_blasr_aln = config["sge_blasr_aln"]
+    job_type = config["job_type"]
     blasr = os.path.join(smrt_bin, "blasr")
     samtools = os.path.join( smrt_bin, "samtools")
+
 
     script_dir = os.path.join( wd )
     script_fn =  os.path.join( script_dir , "aln_%s.sh" % (ctg_id))
@@ -175,8 +180,7 @@ def task_run_blasr(self):
 
     job_data = support.make_job_data(self.URL, script_fn)
     job_data["sge_option"] = sge_blasr_aln
-    #run_script(job_data, job_type = config["job_type"])
-    run_script(job_data, job_type = "SGE")
+    run_script(job_data, job_type = config["job_type"])
     wait_for_file(job_done, task=self, job_name=job_data['job_name'])
 
 def task_htig_asm(self):
@@ -188,8 +192,11 @@ def task_htig_asm(self):
 
     job_uid = self.parameters["job_uid"]
     wd = self.parameters["wd"]
-    sge_hasm = self.parameters["sge_hasm"]
     ctg_id = self.parameters["ctg_id"]
+
+    config = self.parameters["config"]
+    sge_hasm = config["sge_hasm"]
+    job_type = config["job_type"]
 
     script_dir = os.path.join( wd )
     script_fn =  os.path.join( script_dir , "hasm_%s.sh" % (ctg_id))
@@ -224,8 +231,7 @@ def task_htig_asm(self):
 
     job_data = support.make_job_data(self.URL, script_fn)
     job_data["sge_option"] = sge_hasm
-    #run_script(job_data, job_type = config["job_type"])
-    run_script(job_data, job_type = "SGE")
+    run_script(job_data, job_type = job_type)
     wait_for_file(job_done, task=self, job_name=job_data['job_name'])
 
 
@@ -233,17 +239,52 @@ def task_htig_asm(self):
 if __name__ == "__main__":
     global fc_run_logger
     fc_run_logger = support.setup_logger(None)
+    
+    if len(sys.argv) < 2:
+        print "you need to provide a configuration file to specific a couple cluster running environment"
+        sys.exit(1)
+
+    config_fn = sys.argv[1]
+
+    config = ConfigParser.ConfigParser()
+    config.read(config_fn)
+
+    job_type = "SGE"
+    if config.has_option('General', 'job_type'):
+        job_type = config.get('General', 'job_type')
+
+    sge_blasr_aln = " -pe smp 24 -q bigmem " 
+    if config.has_option('Unzip', 'sge_blasr_aln'):
+        sge_blasr_aln = config.get('Unzip', 'sge_blasr_aln')
+
+    smrt_bin = "/mnt/secondary/builds/full/3.0.0/prod/smrtanalysis_3.0.0.153854/smrtcmds/bin/"
+    if config.has_option('Unzip', 'smrt_bin'):
+        smrt_bin = config.get('Unzip', 'smrt_bin')
+
+    sge_hasm = " -pe smp 12 -q bigmem"
+    if config.has_option('Unzip', 'sge_hasm'):
+        sge_hasm = config.get('Unzip', 'sge_hasm')
+
+    unzip_concurrent_jobs = 8
+    if config.has_option('Unzip', 'unzip_concurrent_jobs'):
+        unzip_concurrent_jobs = config.getint('Unzip', 'unzip_concurrent_jobs')
+
+    config = {"job_type": job_type,
+              "sge_blasr_aln": sge_blasr_aln,
+              "smrt_bin": smrt_bin,
+              "sge_hasm": sge_hasm}
+
+    support.job_type = "SGE" #tmp hack until we have a configuration parser
+
     ctg_ids = []
     with open("./3-unzip/reads/ctg_list") as f:
         for row in f:
             row = row.strip()
             ctg_ids.append( row )
 
-    concurrent_jobs = 64
-    PypeThreadWorkflow.setNumThreadAllowed(concurrent_jobs, concurrent_jobs)
+    PypeThreadWorkflow.setNumThreadAllowed(unzip_concurrent_jobs, unzip_concurrent_jobs)
     wf = PypeThreadWorkflow()
 
-    sge_blasr_aln = " -pe smp 24 -q bigmem " 
     ctg_list_file = makePypeLocalFile("./3-unzip/reads/ctg_list")
 
     aln1_outs = {}
@@ -258,8 +299,7 @@ if __name__ == "__main__":
         ctg_aln_out = makePypeLocalFile( os.path.join( wd, "{ctg_id}_sorted.bam".format( ctg_id = ctg_id ) ) )
         job_done = makePypeLocalFile( os.path.join( wd, "aln_{ctg_id}_done".format( ctg_id = ctg_id ) ) )
     
-        parameters = {"job_uid":"aln-"+ctg_id, "wd": wd, "sge_blasr_aln":sge_blasr_aln, "ctg_id": ctg_id,
-                "smrt_bin":"/mnt/secondary/builds/full/3.0.0/prod/smrtanalysis_3.0.0.153854/smrtcmds/bin/"} 
+        parameters = {"job_uid":"aln-"+ctg_id, "wd": wd, "config":config, "ctg_id": ctg_id} 
         make_blasr_task = PypeTask(inputs = {"ref_fasta": ref_fasta, "read_fasta": read_fasta},
                                    outputs = {"ctg_aln_out": ctg_aln_out, "job_done": job_done},
                                    parameters = parameters,
@@ -269,9 +309,8 @@ if __name__ == "__main__":
         aln1_outs[ctg_id] = (ctg_aln_out, job_done)
         wf.addTask(blasr_task)
 
-        sge_hasm = " -pe smp 12 -q bigmem"
         job_done = makePypeLocalFile( os.path.join( wd, "hasm_{ctg_id}_done".format( ctg_id = ctg_id ) ) )
-        parameters = {"job_uid":"ha-"+ctg_id, "wd": wd, "sge_hasm":sge_hasm, "ctg_id": ctg_id} 
+        parameters = {"job_uid":"ha-"+ctg_id, "wd": wd, "config":config, "ctg_id": ctg_id} 
         make_hasm_task = PypeTask(inputs = {"ref_fasta": ref_fasta, "aln_bam":ctg_aln_out},
                                    outputs = {"job_done": job_done},
                                    parameters = parameters,

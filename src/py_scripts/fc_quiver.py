@@ -8,6 +8,8 @@ import os
 import re
 import sys
 import time
+import ConfigParser
+
 
 support.job_type = "SGE" #tmp hack until we have a configuration parser
 
@@ -146,10 +148,12 @@ def task_run_quiver(self):
 
     job_uid = self.parameters["job_uid"]
     wd = self.parameters["wd"]
-    smrt_bin = self.parameters["smrt_bin"]
-    sge_quiver = self.parameters["sge_quiver"]
+    config = self.parameters["config"]
     ctg_id = self.parameters["ctg_id"]
     
+    smrt_bin = config["smrt_bin"]
+    sge_quiver = config["sge_quiver"]
+    job_type = config["job_type"]
     samtools = os.path.join( smrt_bin, "samtools")
     pbalign = os.path.join( smrt_bin, "pbalign")
     makePbi = os.path.join( smrt_bin, "makePbi")
@@ -185,19 +189,51 @@ def task_run_quiver(self):
 
     job_data = support.make_job_data(self.URL, script_fn)
     job_data["sge_option"] = sge_quiver
-    #run_script(job_data, job_type = config["job_type"])
-    run_script(job_data, job_type = "SGE")
+    run_script(job_data, job_type = job_type)
     wait_for_file(job_done, task=self, job_name=job_data['job_name'])
 
 
 if __name__ == "__main__":
     global fc_run_logger
     fc_run_logger = support.setup_logger(None)
-    ctg_ids = []
+
+
+    if len(sys.argv) < 2:
+        print "you need to provide a configuration file to specific a couple cluster running environment"
+        sys.exit(1)
+
+    config_fn = sys.argv[1]
+
+    config = ConfigParser.ConfigParser()
+    config.read(config_fn)
+
+
+    job_type = "SGE"
+    if config.has_option('General', 'job_type'):
+        job_type = config.get('General', 'job_type')
 
     sge_quiver = " -pe smp 24 -q bigmem " 
-    concurrent_jobs = 64
-    PypeThreadWorkflow.setNumThreadAllowed(concurrent_jobs, concurrent_jobs)
+    if config.has_option('Unzip', 'sge_quiver'):
+        sge_quiver = config.get('Unzip', 'sge_quiver')
+
+    smrt_bin = "/mnt/secondary/builds/full/3.0.0/prod/smrtanalysis_3.0.0.153854/smrtcmds/bin/"
+    if config.has_option('Unzip', 'smrt_bin'):
+        smrt_bin = config.get('Unzip', 'smrt_bin')
+
+    quiver_concurrent_jobs = 8
+    if config.has_option('Unzip', 'quiver_concurrent_jobs'):
+        quiver_concurrent_jobs = config.getint('Unzip', 'quiver_concurrent_jobs')
+
+    config = {"job_type": job_type,
+              "sge_quiver": sge_quiver,
+              "smrt_bin": smrt_bin}
+
+    support.job_type = "SGE" #tmp hack until we have a configuration parser
+
+    ctg_ids = []
+
+
+    PypeThreadWorkflow.setNumThreadAllowed(quiver_concurrent_jobs, quiver_concurrent_jobs)
     wf = PypeThreadWorkflow()
 
     ref_seq_data = {}
@@ -238,8 +274,7 @@ if __name__ == "__main__":
                 with open(fn(ref_fasta),"w") as f:
                     print >>f, ">"+ctg_id
                     print >>f, sequence
-            parameters = {"job_uid":"q-"+ctg_id, "wd": wd, "sge_quiver":sge_quiver, "ctg_id": ctg_id, 
-                          "smrt_bin":"/mnt/secondary/builds/full/3.0.0/prod/smrtanalysis_3.0.0.153854/smrtcmds/bin/"} 
+            parameters = {"job_uid":"q-"+ctg_id, "wd": wd, "config":config, "ctg_id": ctg_id } 
             make_quiver_task = PypeTask(inputs = {"ref_fasta": ref_fasta, "read_sam": read_sam},
                                        outputs = {"cns_fasta": cns_fasta, "cns_fastq": cns_fastq, "job_done": job_done},
                                        parameters = parameters,
