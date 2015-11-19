@@ -12,6 +12,8 @@ find ../0-phasing/ -name "rid_to_phase.*" | xargs cat  > rid_to_phase.all
 fc_ovlp_filter_with_phase.py --fofn ../../2-asm-falcon/las.fofn --max_diff 120 --max_cov 120 --min_cov 1 --n_core 12 --min_len 2500 --db ../../1-preads_ovl/preads.db --rid_phase_map ./rid_to_phase.all > preads.p_ovl
 fc_phased_ovlp_to_graph.py preads.p_ovl --min_len 2500 > fc.log
 fc_graphs_to_h_tigs.py --fc_asm_path ../../2-asm-falcon/ --fc_hasm_path ./ --ctg_id all --rid_phase_map ./rid_to_phase.all --fasta ../../1-preads_ovl/preads4falcon.fasta
+WD=$PWD
+for f in `cat ../reads/ctg_list `;do cd $WD/$f; fc_dedup_h_tigs.py $f; done
 # prepare for quviering the haplotig
 cd ../
 rm all_phased_reads all_h_ctg_ids all_h_ctg_edges all_p_ctg_edges all_p_ctg.fa all_h_ctg.fa
