@@ -5,6 +5,10 @@ import networkx as nx
 
 RCMAP = dict(zip("ACGTacgtNn-","TGCAtgcaNn-"))
 
+def mkdir(d):
+    if not os.path.isdir(d):
+        os.makedirs(d)
+
 def reverse_end( node_id ):
     node_id, end = node_id.split(":")
     new_end = "B" if end == "E" else "E"
@@ -22,42 +26,13 @@ def load_sg_seq(all_read_ids, fasta_fn):
         seqs[r.name] = r.sequence.upper()
     return seqs
 
-if __name__ == "__main__":
-    import argparse
-    import re
-    parser = argparse.ArgumentParser(description='layout haplotigs from primary assembly graph and phased aseembly graph')
-    parser.add_argument('--fc_asm_path', type=str, help='path to the primary Falcon assembly output directory', required=True)
-    parser.add_argument('--fc_hasm_path', type=str, help='path to the phased Falcon assembly output directory', required=True)
-    parser.add_argument('--ctg_id', type=str, help='contig identifier in the bam file', required=True)
-    parser.add_argument('--base_dir', type=str, default="./", help='the output base_dir, default to current working directory')
-    parser.add_argument('--rid_phase_map', type=str, help="path to the file that encode the relationship of the read id to phase blocks", required=True)
-    parser.add_argument('--fasta', type=str, help="sequence file of the p-reads", required=True)
-
-    args = parser.parse_args()
-    fc_asm_path = args.fc_asm_path
-    fc_hasm_path = args.fc_hasm_path
-    ctg_id = args.ctg_id
-    base_dir = args.base_dir
-    fasta_fn = args.fasta
+def generate_haplotigs_for_ctg(p_asm_g, h_asm_G, arid_to_phase, seqs, ctg_id, out_dir):
     
-    p_asm_G = AsmGraph(os.path.join(fc_asm_path, "sg_edges_list"), 
-                       os.path.join(fc_asm_path, "utg_data"),
-                       os.path.join(fc_asm_path, "ctg_paths") )
-
-    h_asm_G = AsmGraph( os.path.join(fc_hasm_path, "sg_edges_list"), 
-                        os.path.join(fc_hasm_path, "utg_data"), 
-                        os.path.join(fc_hasm_path, "ctg_paths") )
+    mkdir( out_dir )
 
     ctg_G = p_asm_G.get_sg_for_ctg(ctg_id) 
 
     ctg_nodes = set(ctg_G.nodes())
-
-    arid_to_phase = {}
-
-    with open(args.rid_phase_map) as f:
-        for row in f:
-            row = row.strip().split()
-            arid_to_phase[row[0]] = (int(row[1]), int(row[2]))
 
     sg = nx.DiGraph()
     
@@ -107,6 +82,11 @@ if __name__ == "__main__":
         
         vrid = v[:9]
         wrid = w[:9]
+
+        if vrid not in arid_to_phase:
+            continue
+        if wrid not in arid_to_phase:
+            continue
         
         if (v, w) in PG_edges:
             if p_asm_G.sg_edges[(v,w)][-1] == "G":
@@ -148,6 +128,10 @@ if __name__ == "__main__":
     for v, w in h_asm_G.sg_edges:
         vrid = v[:9]
         wrid = w[:9]
+        if vrid not in arid_to_phase:
+            continue
+        if wrid not in arid_to_phase:
+            continue
         
         if (v, w) in PG_edges:
             if p_asm_G.sg_edges[(v,w)][-1] == "G":
@@ -272,7 +256,7 @@ if __name__ == "__main__":
         if sg.out_degree(v) == 0 and sg.in_degree(v) == 0:
             sg.remove_node(v)
 
-    nx.write_gexf(sg, "full_g.gexf")
+    #nx.write_gexf(sg, "full_g.gexf")
     
     s_node = p_asm_G.ctg_data[ctg_id][5][0][0]
     t_node = p_asm_G.ctg_data[ctg_id][5][-1][-1]
@@ -338,22 +322,15 @@ if __name__ == "__main__":
 
     s_path_edge_set = set(s_path_edges)
 
-    all_read_ids = set()
-    for v, w in sg.edges():
-        v = v.split(":")[0]
-        w = w.split(":")[0]
-        all_read_ids.add(v)
-        all_read_ids.add(w)
 
-    seqs = load_sg_seq(all_read_ids, fasta_fn)
     
     #output the updated primary contig
     sg2 = sg.copy()
-    p_tig_path = open("p_ctg_path","w")
-    p_tig_fa = open("p_ctg.fa","w")
+    p_tig_path = open(os.path.join(out_dir, "p_ctg_path.%s" % ctg_id),"w")
+    p_tig_fa = open(os.path.join(out_dir, "p_ctg.%s.fa" % ctg_id),"w")
     edges_to_remove1 = set()
     edges_to_remove2 = set()
-    with open("p_ctg_edges","w") as f:
+    with open(os.path.join(out_dir, "p_ctg_edges.%s" % ctg_id), "w") as f:
         seq = []
         for v, w in s_path_edges:
             sg[v][w]["h_edge"] = 1
@@ -408,7 +385,7 @@ if __name__ == "__main__":
         if sg2.out_degree(v) == 0 and sg2.in_degree(v) == 0:
             sg2.remove_node(v)
 
-    nx.write_gexf(sg2, "%s_1.gexf" % ctg_id)
+    #nx.write_gexf(sg2, "%s_1.gexf" % ctg_id)
     
     p_path_nodes = set(s_path)
     p_path_rc_nodes = set( [reverse_end(v) for v in s_path] )
@@ -417,12 +394,12 @@ if __name__ == "__main__":
         p_path_rc_nodes.add( reverse_end(v) )
 
     
-    h_tig_path = open("h_ctg_path","w")
-    h_tig_fa = open("h_ctg_all.fa","w")
+    h_tig_path = open(os.path.join(out_dir, "h_ctg_path.%s" % ctg_id),"w")
+    h_tig_fa = open(os.path.join(out_dir, "h_ctg_all.%s.fa" % ctg_id),"w")
     edges_to_remove = set()
 
     labelled_node = set()
-    with open("h_ctg_edges","w") as f:
+    with open(os.path.join(out_dir, "h_ctg_edges.%s" % ctg_id),"w") as f:
         h_tig_id = 1
         h_paths = {}
         for sub_hg in nx.weakly_connected_component_subgraphs(sg2):
@@ -501,6 +478,7 @@ if __name__ == "__main__":
 
     h_tig_fa.close()
     h_tig_path.close()
+    """
     for v, w in sg.edges():
         if "h_edge" not in sg[v][w]:
             sg[v][w]["h_edge"] = 0
@@ -510,3 +488,71 @@ if __name__ == "__main__":
             sg2[v][w]["h_edge"] = 0
 
     nx.write_gexf(sg, "%s_0.gexf" % ctg_id)
+    """
+
+if __name__ == "__main__":
+    import argparse
+    import re
+    parser = argparse.ArgumentParser(description='layout haplotigs from primary assembly graph and phased aseembly graph')
+    parser.add_argument('--fc_asm_path', type=str, help='path to the primary Falcon assembly output directory', required=True)
+    parser.add_argument('--fc_hasm_path', type=str, help='path to the phased Falcon assembly output directory', required=True)
+    parser.add_argument('--ctg_id', type=str, help='contig identifier in the bam file', default = "all", required=True)
+    parser.add_argument('--base_dir', type=str, default="./", help='the output base_dir, default to current working directory')
+    parser.add_argument('--rid_phase_map', type=str, help="path to the file that encode the relationship of the read id to phase blocks", required=True)
+    parser.add_argument('--fasta', type=str, help="sequence file of the p-reads", required=True)
+
+    args = parser.parse_args()
+    fc_asm_path = args.fc_asm_path
+    fc_hasm_path = args.fc_hasm_path
+    ctg_id = args.ctg_id
+    base_dir = args.base_dir
+    fasta_fn = args.fasta
+    
+    p_asm_G = AsmGraph(os.path.join(fc_asm_path, "sg_edges_list"), 
+                       os.path.join(fc_asm_path, "utg_data"),
+                       os.path.join(fc_asm_path, "ctg_paths") )
+
+    h_asm_G = AsmGraph( os.path.join(fc_hasm_path, "sg_edges_list"), 
+                        os.path.join(fc_hasm_path, "utg_data"), 
+                        os.path.join(fc_hasm_path, "ctg_paths") )
+
+    all_rid_to_phase = {}
+
+    all_read_ids = set()
+    with open(args.rid_phase_map) as f:
+        for row in f:
+            row = row.strip().split()
+            all_rid_to_phase.setdefault( row[1], {} )
+            all_rid_to_phase[row[1]][row[0]] = (int(row[2]), int(row[3]))
+            all_read_ids.add(row[0])
+
+    for v, w in p_asm_G.sg_edges:
+        if p_asm_G.sg_edges[ (v, w) ][-1] != "G":
+            continue
+        v = v.split(":")[0]
+        w = w.split(":")[0]
+        all_read_ids.add(v)
+        all_read_ids.add(w)
+
+    for v, w in h_asm_G.sg_edges:
+        if h_asm_G.sg_edges[ (v, w) ][-1] != "G":
+            continue
+        v = v.split(":")[0]
+        w = w.split(":")[0]
+        all_read_ids.add(v)
+        all_read_ids.add(w)
+
+    seqs = load_sg_seq(all_read_ids, fasta_fn)
+
+    if ctg_id == "all":
+        ctg_id_list = p_asm_G.ctg_data.keys()
+    else:
+        ctg_id_list = [ctg_id]
+
+    for ctg_id in ctg_id_list:
+        if ctg_id[-1] != "F":
+            continue
+        if ctg_id not in all_rid_to_phase:
+            continue
+        arid_to_phase = all_rid_to_phase[ctg_id]
+        generate_haplotigs_for_ctg(p_asm_G, h_asm_G, arid_to_phase, seqs, ctg_id, os.path.join(".", ctg_id))
