@@ -10,6 +10,8 @@ import sys
 import time
 import ConfigParser
 
+global fc_run_logger
+
 support.job_type = "SGE" #tmp hack until we have a configuration parser
 
 wait_time = 5
@@ -183,7 +185,7 @@ def task_run_blasr(self):
     run_script(job_data, job_type = config["job_type"])
     wait_for_file(job_done, task=self, job_name=job_data['job_name'])
 
-def task_htig_asm(self):
+def task_phasing(self):
 
     ref_fasta = fn(self.ref_fasta)
     aln_bam = fn(self.aln_bam)
@@ -195,11 +197,11 @@ def task_htig_asm(self):
     ctg_id = self.parameters["ctg_id"]
 
     config = self.parameters["config"]
-    sge_hasm = config["sge_hasm"]
+    sge_phasing = config["sge_phasing"]
     job_type = config["job_type"]
 
     script_dir = os.path.join( wd )
-    script_fn =  os.path.join( script_dir , "hasm_%s.sh" % (ctg_id))
+    script_fn =  os.path.join( script_dir , "p_%s.sh" % (ctg_id))
 
     script = []
 
@@ -212,17 +214,15 @@ def task_htig_asm(self):
     script.append( "fc_phasing.py --bam {aln_bam} --fasta {ref_fasta} --ctg_id {ctg_id} --base_dir ../".format( aln_bam = aln_bam,
                                                                                                                 ref_fasta = ref_fasta,
                                                                                                                 ctg_id = ctg_id ))
-    script.append( "fc_phasing_readmap.py --ctg_id {ctg_id} --read_map_dir ../../2-asm-falcon/read_maps --phased_reads phased_reads".format(ctg_id = ctg_id) )
-    script.append( "fc_ovlp_filter_with_phase.py --fofn ../../2-asm-falcon/las.fofn\
-            --max_diff 120 --max_cov 120 --min_cov 1 --n_core 12 --min_len 2500\
-            --db ../../1-preads_ovl/preads.db  --rid_phase_map ./rid_to_phase > preads.p_ovl") #TODO: make it configurable
-    script.append( "fc_phased_ovlp_to_graph.py preads.p_ovl --min_len 2500 > fc.log" )
-    script.append( "fc_graphs_to_h_tigs.py --fc_asm_path ../../2-asm-falcon/ --fc_hasm_path ./ --ctg_id {ctg_id}\
-            --rid_phase_map ./rid_to_phase --fasta ../../1-preads_ovl/preads4falcon.fasta".format(ctg_id = ctg_id))
+    script.append( "fc_phasing_readmap.py --ctg_id {ctg_id} --read_map_dir ../../../2-asm-falcon/read_maps --phased_reads phased_reads".format(ctg_id = ctg_id) )
+    #script.append( "fc_ovlp_filter_with_phase.py --fofn ../../2-asm-falcon/las.fofn\
+    #        --max_diff 120 --max_cov 120 --min_cov 1 --n_core 12 --min_len 2500\
+    #        --db ../../1-preads_ovl/preads.db  --rid_phase_map ./rid_to_phase > preads.p_ovl") #TODO: make it configurable
+    #script.append( "fc_phased_ovlp_to_graph.py preads.p_ovl --min_len 2500 > fc.log" )
+    #script.append( "fc_graphs_to_h_tigs.py --fc_asm_path ../../2-asm-falcon/ --fc_phase_path ./ --ctg_id {ctg_id}\
+    #        --rid_phase_map ./rid_to_phase --fasta ../../1-preads_ovl/preads4falcon.fasta".format(ctg_id = ctg_id))
 
-    script.append( "fc_dedup_h_tigs.py" )
-    #script.append( "cd ../../" )
-    #script.append( "fc_track_reads_htigs.py {ctg_id}".format(ctg_id=ctg_id) )
+    #script.append( "fc_dedup_h_tigs.py" )
     script.append( "date" )
     script.append( "touch {job_done}".format(job_done = job_done) )
 
@@ -230,14 +230,13 @@ def task_htig_asm(self):
         script_file.write("\n".join(script) + '\n')
 
     job_data = support.make_job_data(self.URL, script_fn)
-    job_data["sge_option"] = sge_hasm
+    job_data["sge_option"] = sge_phasing
     run_script(job_data, job_type = job_type)
     wait_for_file(job_done, task=self, job_name=job_data['job_name'])
 
 
 
 if __name__ == "__main__":
-    global fc_run_logger
     fc_run_logger = support.setup_logger(None)
     
     if len(sys.argv) < 2:
@@ -261,9 +260,9 @@ if __name__ == "__main__":
     if config.has_option('Unzip', 'smrt_bin'):
         smrt_bin = config.get('Unzip', 'smrt_bin')
 
-    sge_hasm = " -pe smp 12 -q bigmem"
-    if config.has_option('Unzip', 'sge_hasm'):
-        sge_hasm = config.get('Unzip', 'sge_hasm')
+    sge_phasing = " -pe smp 12 -q bigmem"
+    if config.has_option('Unzip', 'sge_phasing'):
+        sge_phasing = config.get('Unzip', 'sge_phasing')
 
     unzip_concurrent_jobs = 8
     if config.has_option('Unzip', 'unzip_concurrent_jobs'):
@@ -272,7 +271,7 @@ if __name__ == "__main__":
     config = {"job_type": job_type,
               "sge_blasr_aln": sge_blasr_aln,
               "smrt_bin": smrt_bin,
-              "sge_hasm": sge_hasm}
+              "sge_phasing": sge_phasing}
 
     support.job_type = "SGE" #tmp hack until we have a configuration parser
 
@@ -294,7 +293,7 @@ if __name__ == "__main__":
         read_fasta = makePypeLocalFile("./3-unzip/reads/{ctg_id}_reads.fa".format(ctg_id = ctg_id))
         
         # outputs
-        wd = os.path.join( os.getcwd(),  "./3-unzip/{ctg_id}/".format( ctg_id = ctg_id ) )
+        wd = os.path.join( os.getcwd(),  "./3-unzip/0-phasing/{ctg_id}/".format( ctg_id = ctg_id ) )
         mkdir(wd)
         ctg_aln_out = makePypeLocalFile( os.path.join( wd, "{ctg_id}_sorted.bam".format( ctg_id = ctg_id ) ) )
         job_done = makePypeLocalFile( os.path.join( wd, "aln_{ctg_id}_done".format( ctg_id = ctg_id ) ) )
@@ -304,20 +303,20 @@ if __name__ == "__main__":
                                    outputs = {"ctg_aln_out": ctg_aln_out, "job_done": job_done},
                                    parameters = parameters,
                                    TaskType = PypeThreadTaskBase,
-                                   URL = "task://localhost/aln1_{ctg_id}".format( ctg_id = ctg_id ) )
+                                   URL = "task://localhost/aln_{ctg_id}".format( ctg_id = ctg_id ) )
         blasr_task = make_blasr_task(task_run_blasr)
         aln1_outs[ctg_id] = (ctg_aln_out, job_done)
         wf.addTask(blasr_task)
 
-        job_done = makePypeLocalFile( os.path.join( wd, "hasm_{ctg_id}_done".format( ctg_id = ctg_id ) ) )
+        job_done = makePypeLocalFile( os.path.join( wd, "p_{ctg_id}_done".format( ctg_id = ctg_id ) ) )
         parameters = {"job_uid":"ha-"+ctg_id, "wd": wd, "config":config, "ctg_id": ctg_id} 
-        make_hasm_task = PypeTask(inputs = {"ref_fasta": ref_fasta, "aln_bam":ctg_aln_out},
+        make_phasing_task = PypeTask(inputs = {"ref_fasta": ref_fasta, "aln_bam":ctg_aln_out},
                                    outputs = {"job_done": job_done},
                                    parameters = parameters,
                                    TaskType = PypeThreadTaskBase,
-                                   URL = "task://localhost/h_{ctg_id}".format( ctg_id = ctg_id ) )
-        hasm_task = make_hasm_task(task_htig_asm)
-        wf.addTask(hasm_task)
+                                   URL = "task://localhost/p_{ctg_id}".format( ctg_id = ctg_id ) )
+        phasing_task = make_phasing_task(task_phasing)
+        wf.addTask(phasing_task)
     #print aln1_outs
     wf.refreshTargets()
         

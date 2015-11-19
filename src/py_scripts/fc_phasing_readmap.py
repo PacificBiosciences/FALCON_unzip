@@ -38,6 +38,6 @@ if __name__ == "__main__":
                 phase = rid_to_phase.get( row[1], (-1, 0) )
                 arid_to_phase["%09d" % int(row[0])] = phase
             
-    with open(os.path.join(base_dir, "rid_to_phase"),"w") as f:
+    with open(os.path.join(base_dir, "rid_to_phase.%s" % the_ctg_id),"w") as f:
         for arid, phase in arid_to_phase.items():
-            print >>f, arid, phase[0], phase[1]
+            print >>f, arid, the_ctg_id, phase[0], phase[1]

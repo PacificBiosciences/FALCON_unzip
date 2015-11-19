@@ -62,7 +62,10 @@ def filter_stage1(input_):
                 continue
             if t_id not in arid2phase:
                 continue
-            if arid2phase[t_id][0] == arid2phase[q_id][0] and arid2phase[t_id][1] != arid2phase[q_id][1]:
+            if arid2phase[t_id][0] != arid2phase[q_id][0]:
+                continue
+
+            if arid2phase[t_id][1] == arid2phase[q_id][1] and arid2phase[t_id][2] != arid2phase[q_id][2]:
                 continue
 
             if q_id != None and q_id != current_q_id:
@@ -149,7 +152,10 @@ def filter_stage2(input_):
                 continue
             if t_id not in arid2phase:
                 continue
-            if arid2phase[t_id][0] == arid2phase[q_id][0] and arid2phase[t_id][1] != arid2phase[q_id][1]:
+
+            if arid2phase[t_id][0] != arid2phase[q_id][0]:
+                continue
+            if arid2phase[t_id][1] == arid2phase[q_id][1] and arid2phase[t_id][2] != arid2phase[q_id][2]:
                 continue
 
 
@@ -193,7 +199,10 @@ def filter_stage3(input_):
                 continue
             if t_id not in arid2phase:
                 continue
-            if arid2phase[t_id][0] == arid2phase[q_id][0] and arid2phase[t_id][1] != arid2phase[q_id][1]:
+
+            if arid2phase[t_id][0] != arid2phase[q_id][0]:
+                continue
+            if arid2phase[t_id][1] == arid2phase[q_id][1] and arid2phase[t_id][2] != arid2phase[q_id][2]:
                 continue
 
             if current_q_id == None:
@@ -302,7 +311,7 @@ if __name__ == "__main__":
     with open(args.rid_phase_map) as f:
         for row in f:
             row = row.strip().split()
-            arid2phase[row[0]] = (row[1], row[2])
+            arid2phase[row[0]] = (row[1], row[2], row[3]) #ctg_id, phase_blk_id, phase_id
 
     exe_pool = Pool(args.n_core)
     
