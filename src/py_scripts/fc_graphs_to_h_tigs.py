@@ -2,8 +2,14 @@ from falcon_kit.fc_asm_graph import AsmGraph
 from falcon_kit.FastaReader import FastaReader
 import os
 import networkx as nx
+from multiprocessing import Pool
 
 RCMAP = dict(zip("ACGTacgtNn-","TGCAtgcaNn-"))
+## for shared memory usage
+global p_asm_g
+global h_asm_G
+global all_rid_to_phase
+global seqs
 
 def mkdir(d):
     if not os.path.isdir(d):
@@ -26,8 +32,15 @@ def load_sg_seq(all_read_ids, fasta_fn):
         seqs[r.name] = r.sequence.upper()
     return seqs
 
-def generate_haplotigs_for_ctg(p_asm_g, h_asm_G, arid_to_phase, seqs, ctg_id, out_dir):
-    
+def generate_haplotigs_for_ctg(input_):
+   
+    ctg_id, out_dir = input_
+    global p_asm_g
+    global h_asm_G
+    global all_rid_to_phase
+    global seqs
+    arid_to_phase = all_rid_to_phase[ctg_id]
+
     mkdir( out_dir )
 
     ctg_G = p_asm_G.get_sg_for_ctg(ctg_id) 
@@ -549,10 +562,13 @@ if __name__ == "__main__":
     else:
         ctg_id_list = [ctg_id]
 
+    exe_list = []
     for ctg_id in ctg_id_list:
         if ctg_id[-1] != "F":
             continue
         if ctg_id not in all_rid_to_phase:
             continue
-        arid_to_phase = all_rid_to_phase[ctg_id]
-        generate_haplotigs_for_ctg(p_asm_G, h_asm_G, arid_to_phase, seqs, ctg_id, os.path.join(".", ctg_id))
+        exe_list.append( (ctg_id, os.path.join(".", ctg_id)) )
+
+    exec_pool = Pool(24)
+    exec_pool.map( generate_haplotigs_for_ctg, exe_list)
