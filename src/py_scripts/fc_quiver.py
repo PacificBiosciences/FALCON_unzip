@@ -172,7 +172,7 @@ def task_run_quiver(self):
     
     script.append( "{samtools} faidx {ref_fasta}".format( samtools=samtools, ref_fasta=ref_fasta ) )
     script.append( "{samtools} view -b -S {read_sam} > {ctg_id}.bam".format( samtools=samtools, read_sam = read_sam, ctg_id = ctg_id ) )
-    script.append( "{pbalign} --tmpDir=/localdisk/scratch/ -vv --nproc=24 --minAccuracy=0.75 --minLength=50\
+    script.append( "{pbalign} --tmpDir=/localdisk/scratch/ --nproc=24 --minAccuracy=0.75 --minLength=50\
             --minAnchorSize=12 --maxDivergence=30 --concordant --algorithm=blasr\
             --algorithmOptions=-useQuality --maxHits=1 --hitPolicy=random --seed=1\
             {ctg_id}.bam {ref_fasta} aln-{ctg_id}.bam".format( pbalign=pbalign , ctg_id = ctg_id, ref_fasta = ref_fasta)) 
