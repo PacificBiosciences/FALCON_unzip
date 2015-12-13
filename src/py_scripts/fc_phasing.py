@@ -560,5 +560,5 @@ if __name__ == "__main__":
     
 
     wf.refreshTargets() 
-    with open("fc_phasing_wf.dot", "w") as f:
-        print >>f, wf.graphvizDot 
+    #with open("fc_phasing_wf.dot", "w") as f:
+    #    print >>f, wf.graphvizDot 
