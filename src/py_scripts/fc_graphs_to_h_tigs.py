@@ -465,6 +465,8 @@ def generate_haplotigs_for_ctg(input_):
                         continue
                     s_path.append( [ path, t ] )
                 s_path.sort(key = lambda x: -len(x[0]))
+                if len(s_path) == 0:
+                    continue
                 s_longest[s] = s_path[0][0]
                 if len(s_longest[s]) > len(longest):
                     longest = s_longest[s]
