@@ -430,17 +430,19 @@ def generate_haplotigs_for_ctg(input_):
         #print "number of components:", len([tmp for tmp in nx.weakly_connected_component_subgraphs(sg2)])
         for sub_hg in nx.weakly_connected_component_subgraphs(sg2):
             #print "sub_hg size:", len(sub_hg.nodes())
-            sources = [n for n in sub_hg.nodes() if sub_hg.in_degree(n) != 1 and n in reachable_both]
-            sinks = [n for n in sub_hg.nodes() if sub_hg.out_degree(n) != 1 and n in reachable_both]
+            #sources = [n for n in sub_hg.nodes() if sub_hg.in_degree(n) != 1 and n in reachable_both]
+            #sinks = [n for n in sub_hg.nodes() if sub_hg.out_degree(n) != 1 and n in reachable_both]
+            sources = [n for n in sub_hg.nodes() if sub_hg.in_degree(n) != 1 ]
+            sinks = [n for n in sub_hg.nodes() if sub_hg.out_degree(n) != 1 ]
 
-            #print "number of sources", len(sources)
-            #print "number of sinks", len(sinks)
+            #print "number of sources", len(sources),  sources
+            #print "number of sinks", len(sinks), sinks
             if len(sources) == 0 and len(sinks) == 0:
                 continue
-            if len(sources) == 0:
-                sources = [n for n in sub_hg.nodes() if sub_hg.in_degree(n) != 1]
-            if len(sinks) == 0:
-                sinks = [n for n in sub_hg.nodes() if sub_hg.out_degree(n) != 1]
+            #if len(sources) == 0:
+            #    sources = [n for n in sub_hg.nodes() if sub_hg.in_degree(n) != 1]
+            #if len(sinks) == 0:
+            #    sinks = [n for n in sub_hg.nodes() if sub_hg.out_degree(n) != 1]
 
             if len(set(sources) & labelled_node) != 0:
                 continue
@@ -448,9 +450,10 @@ def generate_haplotigs_for_ctg(input_):
             longest = [] 
 
             eliminated_sinks = set()
-            longest_t = None
+            s_longest = {}
             for s in sources:
                 #print "test source",s, len(eliminated_sinks)
+                s_path = []
                 for t in sinks:
                     if t in eliminated_sinks:
                         continue
@@ -460,14 +463,15 @@ def generate_haplotigs_for_ctg(input_):
                     except nx.exception.NetworkXNoPath:
                         path = []
                         continue
-                    if len(path) > len(longest):
-                        if longest_t != None and longest_t != t:
-                            eliminated_sinks.add(longest_t)
-                        longest = path
-                        longest_t = t
-                        #print "find path len:", len(path), s, t
-                    elif t != longest_t:
-                        eliminated_sinks.add(t)
+                    s_path.append( [ path, t ] )
+                s_path.sort(key = lambda x: -len(x[0]))
+                s_longest[s] = s_path[0][0]
+                if len(s_longest[s]) > len(longest):
+                    longest = s_longest[s]
+                    #print "s longest", longest[0], longest[-1], len(longest)
+                for path, t in s_path[1:]:
+                    eliminated_sinks.add(t)
+                    #print "elimated t", t
                         
 
             if len(longest) < 2:
