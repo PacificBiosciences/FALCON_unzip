@@ -428,67 +428,75 @@ def generate_haplotigs_for_ctg(input_):
         h_tig_id = 1
         h_paths = {}
         #print "number of components:", len([tmp for tmp in nx.weakly_connected_component_subgraphs(sg2)])
-        for sub_hg in nx.weakly_connected_component_subgraphs(sg2):
-            #print "sub_hg size:", len(sub_hg.nodes())
-            #sources = [n for n in sub_hg.nodes() if sub_hg.in_degree(n) != 1 and n in reachable_both]
-            #sinks = [n for n in sub_hg.nodes() if sub_hg.out_degree(n) != 1 and n in reachable_both]
-            sources = [n for n in sub_hg.nodes() if sub_hg.in_degree(n) != 1 ]
-            sinks = [n for n in sub_hg.nodes() if sub_hg.out_degree(n) != 1 ]
+        for sub_hg_0 in nx.weakly_connected_component_subgraphs(sg2):
+            sub_hg = sub_hg_0.copy()
+            while sub_hg.size() > 5:
+                #print "sub_hg size:", len(sub_hg.nodes())
+                #sources = [n for n in sub_hg.nodes() if sub_hg.in_degree(n) != 1 and n in reachable_both]
+                #sinks = [n for n in sub_hg.nodes() if sub_hg.out_degree(n) != 1 and n in reachable_both]
+                sources = [n for n in sub_hg.nodes() if sub_hg.in_degree(n) != 1 ]
+                sinks = [n for n in sub_hg.nodes() if sub_hg.out_degree(n) != 1 ]
+                
+                #if "000535751:E" in sources and "000341267:B" in sinks:
+                #    print "TEST", nx.shortest_path(sub_hg, "000535751:E", "000341267:B", weight="score") 
 
-            #print "number of sources", len(sources),  sources
-            #print "number of sinks", len(sinks), sinks
-            if len(sources) == 0 and len(sinks) == 0:
-                continue
-            #if len(sources) == 0:
-            #    sources = [n for n in sub_hg.nodes() if sub_hg.in_degree(n) != 1]
-            #if len(sinks) == 0:
-            #    sinks = [n for n in sub_hg.nodes() if sub_hg.out_degree(n) != 1]
-
-            if len(set(sources) & labelled_node) != 0:
-                continue
-
-            longest = [] 
-
-            eliminated_sinks = set()
-            s_longest = {}
-            for s in sources:
-                #print "test source",s, len(eliminated_sinks)
-                s_path = []
-                for t in sinks:
-                    if t in eliminated_sinks:
-                        continue
-                    try:
-                        path = nx.shortest_path(sub_hg, s, t, weight="score")
-                        #print "test path len:", len(path), s, t
-                    except nx.exception.NetworkXNoPath:
-                        path = []
-                        continue
-                    s_path.append( [ path, t ] )
-                s_path.sort(key = lambda x: -len(x[0]))
-                if len(s_path) == 0:
+                #print "number of sources", len(sources),  sources
+                #print "number of sinks", len(sinks), sinks
+                if len(sources) == 0 and len(sinks) == 0:
                     continue
-                s_longest[s] = s_path[0][0]
-                if len(s_longest[s]) > len(longest):
-                    longest = s_longest[s]
-                    #print "s longest", longest[0], longest[-1], len(longest)
-                for path, t in s_path[1:]:
-                    eliminated_sinks.add(t)
-                    #print "elimated t", t
-                        
+                #if len(sources) == 0:
+                #    sources = [n for n in sub_hg.nodes() if sub_hg.in_degree(n) != 1]
+                #if len(sinks) == 0:
+                #    sinks = [n for n in sub_hg.nodes() if sub_hg.out_degree(n) != 1]
 
-            if len(longest) < 2:
-                continue
+                if len(set(sources) & labelled_node) != 0:
+                    continue
 
-            if len(set(longest) & p_path_rc_nodes) != 0:
-                continue
-        
-            s = longest[0]
-            t = longest[-1]
-            h_paths[ ( s, t ) ] = longest
+                longest = [] 
+
+                eliminated_sinks = set()
+                s_longest = {}
+                for s in sources:
+                    #print "test source",s, len(eliminated_sinks)
+                    s_path = []
+                    for t in sinks:
+                        if t in eliminated_sinks:
+                            continue
+                        try:
+                            path = nx.shortest_path(sub_hg, s, t, weight="score")
+                            #print "test path len:", len(path), s, t
+                        except nx.exception.NetworkXNoPath:
+                            path = []
+                            continue
+                        s_path.append( [ path, t ] )
+                    s_path.sort(key = lambda x: -len(x[0]))
+                    if len(s_path) == 0:
+                        continue
+                    s_longest[s] = s_path[0][0]
+                    if len(s_longest[s]) > len(longest):
+                        longest = s_longest[s]
+                        #print "s longest", longest[0], longest[-1], len(longest)
+                    for path, t in s_path[1:]:
+                        eliminated_sinks.add(t)
+                        #print "elimated t", t
+                            
+
+                if len(longest) < 2:
+                    continue
+
+                if len(set(longest) & p_path_rc_nodes) != 0:
+                    continue
             
-            labelled_node.add(s)
-            rs = reverse_end(s)
-            labelled_node.add(rs)
+                s = longest[0]
+                t = longest[-1]
+                h_paths[ ( s, t ) ] = longest
+                
+                labelled_node.add(s)
+                rs = reverse_end(s)
+                labelled_node.add(rs)
+
+                for v in longest:
+                    sub_hg.remove_node(v)
 
         for s, t in h_paths:
             longest = h_paths[ (s, t) ]
@@ -530,17 +538,18 @@ def generate_haplotigs_for_ctg(input_):
 
     h_tig_fa.close()
     h_tig_path.close()
-    """
-    for v, w in sg.edges():
-        if "h_edge" not in sg[v][w]:
-            sg[v][w]["h_edge"] = 0
 
-    for v, w in sg2.edges():
-        if "h_edge" not in sg2[v][w]:
-            sg2[v][w]["h_edge"] = 0
+    dump_graph = False  # the code segement below is useful for showing the graph
+    if dump_graph == True:
+        for v, w in sg.edges():
+            if "h_edge" not in sg[v][w]:
+                sg[v][w]["h_edge"] = 0
 
-    nx.write_gexf(sg, "%s_0.gexf" % ctg_id)
-    """
+        for v, w in sg2.edges():
+            if "h_edge" not in sg2[v][w]:
+                sg2[v][w]["h_edge"] = 0
+
+        nx.write_gexf(sg, "%s_0.gexf" % ctg_id)
 
 if __name__ == "__main__":
     import argparse
