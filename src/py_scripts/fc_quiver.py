@@ -177,8 +177,8 @@ def task_run_quiver(self):
             --algorithmOptions=-useQuality --maxHits=1 --hitPolicy=random --seed=1\
             {ctg_id}.bam {ref_fasta} aln-{ctg_id}.bam".format( pbalign=pbalign , ctg_id = ctg_id, ref_fasta = ref_fasta)) 
     script.append( "#{makePbi} --referenceFasta {ref_fasta} aln-{ctg_id}.bam".format(makePbi = makePbi, ref_fasta = ref_fasta, ctg_id = ctg_id) ) 
-    script.append( "{variantCaller} -x 5 -X 120 -q 20 -j 24 -r {ref_fasta} aln-{ctg_id}.bam\
-            -o {cns_fasta} -o {cns_fastq}".format( variantCaller = variantCaller, ctg_id = ctg_id, ref_fasta = ref_fasta, 
+    script.append( "({variantCaller} -x 5 -X 120 -q 20 -j 24 -r {ref_fasta} aln-{ctg_id}.bam\
+            -o {cns_fasta} -o {cns_fastq}) || echo quvier failed".format( variantCaller = variantCaller, ctg_id = ctg_id, ref_fasta = ref_fasta, 
                                                    cns_fasta=cns_fasta, cns_fastq=cns_fastq ))
 
     script.append( "date" )
