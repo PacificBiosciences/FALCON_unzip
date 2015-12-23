@@ -485,7 +485,7 @@ def generate_haplotigs_for_ctg(input_):
                         #print "elimated t", t
                             
 
-                if len(longest) <= 5:
+                if len(longest) == 0:
                     break
 
                 s = longest[0]
