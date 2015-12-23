@@ -417,9 +417,10 @@ def generate_haplotigs_for_ctg(input_):
 
     sg2_nodes = set(sg2.nodes())
     for v in p_asm_G.get_sg_for_ctg(ctg_id).nodes():
-        p_path_rc_nodes.add( reverse_end(v) )
-        if v in sg2_nodes:
-            sg2.remove_node(v)
+        rv = reverse_end(v)
+        p_path_rc_nodes.add( rv )
+        if rv in sg2_nodes:
+            sg2.remove_node(rv)
 
     
     h_tig_path = open(os.path.join(out_dir, "h_ctg_path.%s" % ctg_id),"w")
