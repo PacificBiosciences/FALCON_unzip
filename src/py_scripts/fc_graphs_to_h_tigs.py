@@ -415,8 +415,11 @@ def generate_haplotigs_for_ctg(input_):
     p_path_nodes = set(s_path)
     p_path_rc_nodes = set( [reverse_end(v) for v in s_path] )
 
+    sg2_nodes = set(sg2.nodes())
     for v in p_asm_G.get_sg_for_ctg(ctg_id).nodes():
         p_path_rc_nodes.add( reverse_end(v) )
+        if v in sg2_nodes:
+            sg2.remove_node(v)
 
     
     h_tig_path = open(os.path.join(out_dir, "h_ctg_path.%s" % ctg_id),"w")
@@ -481,12 +484,9 @@ def generate_haplotigs_for_ctg(input_):
                         #print "elimated t", t
                             
 
-                if len(longest) < 2:
-                    continue
+                if len(longest) <= 5:
+                    break
 
-                if len(set(longest) & p_path_rc_nodes) != 0:
-                    continue
-            
                 s = longest[0]
                 t = longest[-1]
                 h_paths[ ( s, t ) ] = longest
