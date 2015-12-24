@@ -2,8 +2,14 @@ from falcon_kit.fc_asm_graph import AsmGraph
 from falcon_kit.FastaReader import FastaReader
 import os
 import networkx as nx
+from multiprocessing import Pool
 
 RCMAP = dict(zip("ACGTacgtNn-","TGCAtgcaNn-"))
+## for shared memory usage
+global p_asm_g
+global h_asm_G
+global all_rid_to_phase
+global seqs
 
 def mkdir(d):
     if not os.path.isdir(d):
@@ -26,8 +32,15 @@ def load_sg_seq(all_read_ids, fasta_fn):
         seqs[r.name] = r.sequence.upper()
     return seqs
 
-def generate_haplotigs_for_ctg(p_asm_g, h_asm_G, arid_to_phase, seqs, ctg_id, out_dir):
-    
+def generate_haplotigs_for_ctg(input_):
+   
+    ctg_id, out_dir = input_
+    global p_asm_g
+    global h_asm_G
+    global all_rid_to_phase
+    global seqs
+    arid_to_phase = all_rid_to_phase[ctg_id]
+
     mkdir( out_dir )
 
     ctg_G = p_asm_G.get_sg_for_ctg(ctg_id) 
@@ -363,6 +376,8 @@ def generate_haplotigs_for_ctg(p_asm_g, h_asm_G, arid_to_phase, seqs, ctg_id, ou
     p_tig_fa.close()
     p_tig_path.close()
 
+
+
     reachable1 = nx.descendants(sg2, s_node)
     sg2_r = sg2.reverse()
     reachable2 = nx.descendants(sg2_r, t_node)
@@ -377,6 +392,10 @@ def generate_haplotigs_for_ctg(p_asm_g, h_asm_G, arid_to_phase, seqs, ctg_id, ou
     for v, w in list(edges_to_remove1):
         sg2.remove_edge( v, w )
 
+    for v, w in sg2.edges():
+        if sg2[v][w]["cross_phase"] == "Y":
+            sg2.remove_edge( v, w )
+
     for v in sg2.nodes():
         if v not in reachable_all:
             sg2.remove_node(v)
@@ -384,14 +403,24 @@ def generate_haplotigs_for_ctg(p_asm_g, h_asm_G, arid_to_phase, seqs, ctg_id, ou
     for v in sg2.nodes():
         if sg2.out_degree(v) == 0 and sg2.in_degree(v) == 0:
             sg2.remove_node(v)
+            continue
+        if v in reachable_both:
+            sg2.node[v]["reachable"] = 1
+        else:
+            sg2.node[v]["reachable"] = 0
+        
 
     #nx.write_gexf(sg2, "%s_1.gexf" % ctg_id)
     
     p_path_nodes = set(s_path)
     p_path_rc_nodes = set( [reverse_end(v) for v in s_path] )
 
+    sg2_nodes = set(sg2.nodes())
     for v in p_asm_G.get_sg_for_ctg(ctg_id).nodes():
-        p_path_rc_nodes.add( reverse_end(v) )
+        rv = reverse_end(v)
+        p_path_rc_nodes.add( rv )
+        if rv in sg2_nodes:
+            sg2.remove_node(rv)
 
     
     h_tig_path = open(os.path.join(out_dir, "h_ctg_path.%s" % ctg_id),"w")
@@ -402,45 +431,77 @@ def generate_haplotigs_for_ctg(p_asm_g, h_asm_G, arid_to_phase, seqs, ctg_id, ou
     with open(os.path.join(out_dir, "h_ctg_edges.%s" % ctg_id),"w") as f:
         h_tig_id = 1
         h_paths = {}
-        for sub_hg in nx.weakly_connected_component_subgraphs(sg2):
-            sources = [n for n in sub_hg.nodes() if sub_hg.in_degree(n) != 1 and n in reachable_both]
-            sinks = [n for n in sub_hg.nodes() if sub_hg.out_degree(n) != 1 and n in reachable_both]
-            if len(sources) == 0 and len(sinks) == 0:
-                continue
-            if len(sources) == 0:
-                sources = [n for n in sub_hg.nodes() if sub_hg.in_degree(n) != 1]
-            if len(sinks) == 0:
-                sinks = [n for n in sub_hg.nodes() if sub_hg.out_degree(n) != 1]
+        #print "number of components:", len([tmp for tmp in nx.weakly_connected_component_subgraphs(sg2)])
+        for sub_hg_0 in nx.weakly_connected_component_subgraphs(sg2):
+            sub_hg = sub_hg_0.copy()
+            while sub_hg.size() > 5:
+                #print "sub_hg size:", len(sub_hg.nodes())
+                #sources = [n for n in sub_hg.nodes() if sub_hg.in_degree(n) != 1 and n in reachable_both]
+                #sinks = [n for n in sub_hg.nodes() if sub_hg.out_degree(n) != 1 and n in reachable_both]
+                sources = [n for n in sub_hg.nodes() if sub_hg.in_degree(n) != 1 ]
+                sinks = [n for n in sub_hg.nodes() if sub_hg.out_degree(n) != 1 ]
+                
+                #if "000535751:E" in sources and "000341267:B" in sinks:
+                #    print "TEST", nx.shortest_path(sub_hg, "000535751:E", "000341267:B", weight="score") 
 
-            if len(set(sources) & labelled_node) != 0:
-                continue
+                #print "number of sources", len(sources),  sources
+                #print "number of sinks", len(sinks), sinks
+                if len(sources) == 0 and len(sinks) == 0:
+                    continue
+                #if len(sources) == 0:
+                #    sources = [n for n in sub_hg.nodes() if sub_hg.in_degree(n) != 1]
+                #if len(sinks) == 0:
+                #    sinks = [n for n in sub_hg.nodes() if sub_hg.out_degree(n) != 1]
 
-            longest = [] 
-            for s in sources:
-                for t in sinks:
-                    try:
-                        path = nx.shortest_path(sub_hg, s, t, weight="score")
-                    except nx.exception.NetworkXNoPath:
-                        path = []
-                        pass
-                    if len(path) > len(longest):
-                        longest = path
-            if len(longest) < 2:
-                continue
+                if len(set(sources) & labelled_node) != 0:
+                    continue
 
-            if len(set(longest) & p_path_rc_nodes) != 0:
-                continue
-        
-            s = longest[0]
-            t = longest[-1]
-            h_paths[ ( s, t ) ] = longest
-            
-            labelled_node.add(s)
-            rs = reverse_end(s)
-            labelled_node.add(rs)
-        
+                longest = [] 
+
+                eliminated_sinks = set()
+                s_longest = {}
+                for s in sources:
+                    #print "test source",s, len(eliminated_sinks)
+                    s_path = []
+                    for t in sinks:
+                        if t in eliminated_sinks:
+                            continue
+                        try:
+                            path = nx.shortest_path(sub_hg, s, t, weight="score")
+                            #print "test path len:", len(path), s, t
+                        except nx.exception.NetworkXNoPath:
+                            path = []
+                            continue
+                        s_path.append( [ path, t ] )
+                    s_path.sort(key = lambda x: -len(x[0]))
+                    if len(s_path) == 0:
+                        continue
+                    s_longest[s] = s_path[0][0]
+                    if len(s_longest[s]) > len(longest):
+                        longest = s_longest[s]
+                        #print "s longest", longest[0], longest[-1], len(longest)
+                    for path, t in s_path[1:]:
+                        eliminated_sinks.add(t)
+                        #print "elimated t", t
+                            
+
+                if len(longest) == 0:
+                    break
+
+                s = longest[0]
+                t = longest[-1]
+                h_paths[ ( s, t ) ] = longest
+                
+                labelled_node.add(s)
+                rs = reverse_end(s)
+                labelled_node.add(rs)
+
+                for v in longest:
+                    sub_hg.remove_node(v)
+
         for s, t in h_paths:
             longest = h_paths[ (s, t) ]
+            #print "number of node in path", s,t,len(longest) 
             seq = []
             for v, w in zip(longest[:-1], longest[1:]):
                 sg[v][w]["h_edge"] = 1
@@ -478,17 +539,18 @@ def generate_haplotigs_for_ctg(p_asm_g, h_asm_G, arid_to_phase, seqs, ctg_id, ou
 
     h_tig_fa.close()
     h_tig_path.close()
-    """
-    for v, w in sg.edges():
-        if "h_edge" not in sg[v][w]:
-            sg[v][w]["h_edge"] = 0
 
-    for v, w in sg2.edges():
-        if "h_edge" not in sg2[v][w]:
-            sg2[v][w]["h_edge"] = 0
+    dump_graph = False  # the code segement below is useful for showing the graph
+    if dump_graph == True:
+        for v, w in sg.edges():
+            if "h_edge" not in sg[v][w]:
+                sg[v][w]["h_edge"] = 0
 
-    nx.write_gexf(sg, "%s_0.gexf" % ctg_id)
-    """
+        for v, w in sg2.edges():
+            if "h_edge" not in sg2[v][w]:
+                sg2[v][w]["h_edge"] = 0
+
+        nx.write_gexf(sg, "%s_0.gexf" % ctg_id)
 
 if __name__ == "__main__":
     import argparse
@@ -549,10 +611,14 @@ if __name__ == "__main__":
     else:
         ctg_id_list = [ctg_id]
 
+    exe_list = []
     for ctg_id in ctg_id_list:
         if ctg_id[-1] != "F":
             continue
         if ctg_id not in all_rid_to_phase:
             continue
-        arid_to_phase = all_rid_to_phase[ctg_id]
-        generate_haplotigs_for_ctg(p_asm_G, h_asm_G, arid_to_phase, seqs, ctg_id, os.path.join(".", ctg_id))
+        exe_list.append( (ctg_id, os.path.join(".", ctg_id)) )
+
+    exec_pool = Pool(24)
+    exec_pool.map( generate_haplotigs_for_ctg, exe_list)
+    #map( generate_haplotigs_for_ctg, exe_list)

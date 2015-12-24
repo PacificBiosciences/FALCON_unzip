@@ -15,7 +15,7 @@ fc_graphs_to_h_tigs.py --fc_asm_path ../../2-asm-falcon/ --fc_hasm_path ./ --ctg
 WD=$PWD
 for f in `cat ../reads/ctg_list `;do cd $WD/$f; fc_dedup_h_tigs.py $f; done
 # prepare for quviering the haplotig
-cd ../
+cd $WD/..
 rm all_phased_reads all_h_ctg_ids all_h_ctg_edges all_p_ctg_edges all_p_ctg.fa all_h_ctg.fa
 find 0-phasing -name "phased_reads" | sort | xargs cat >> all_phased_reads
 find 1-hasm -name "h_ctg_ids.*" | sort | xargs cat >> all_h_ctg_ids
