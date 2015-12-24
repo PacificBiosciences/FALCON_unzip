@@ -6,7 +6,7 @@ from multiprocessing import Pool
 
 RCMAP = dict(zip("ACGTacgtNn-","TGCAtgcaNn-"))
 ## for shared memory usage
-global p_asm_g
+global p_asm_G
 global h_asm_G
 global all_rid_to_phase
 global seqs
@@ -35,7 +35,7 @@ def load_sg_seq(all_read_ids, fasta_fn):
 def generate_haplotigs_for_ctg(input_):
    
     ctg_id, out_dir = input_
-    global p_asm_g
+    global p_asm_G
     global h_asm_G
     global all_rid_to_phase
     global seqs
