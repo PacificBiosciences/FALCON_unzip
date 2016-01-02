@@ -338,7 +338,6 @@ def generate_haplotigs_for_ctg(input_):
 
     
     #output the updated primary contig
-    sg2 = sg.copy()
     p_tig_path = open(os.path.join(out_dir, "p_ctg_path.%s" % ctg_id),"w")
     p_tig_fa = open(os.path.join(out_dir, "p_ctg.%s.fa" % ctg_id),"w")
     edges_to_remove1 = set()
@@ -378,6 +377,7 @@ def generate_haplotigs_for_ctg(input_):
 
 
 
+    sg2 = sg.copy()
     reachable1 = nx.descendants(sg2, s_node)
     sg2_r = sg2.reverse()
     reachable2 = nx.descendants(sg2_r, t_node)
@@ -386,10 +386,7 @@ def generate_haplotigs_for_ctg(input_):
     reachable_both = reachable1 & reachable2
 
 
-    for v, w in list(edges_to_remove2):
-        sg2.remove_edge( v, w )
-
-    for v, w in list(edges_to_remove1):
+    for v, w in list(edges_to_remove2 | edges_to_remove1):
         sg2.remove_edge( v, w )
 
     for v, w in sg2.edges():
@@ -409,8 +406,9 @@ def generate_haplotigs_for_ctg(input_):
         else:
             sg2.node[v]["reachable"] = 0
         
-
-    #nx.write_gexf(sg2, "%s_1.gexf" % ctg_id)
+    dump_graph = False # the code segement below is useful for showing the graph
+    if dump_graph == True:
+        nx.write_gexf(sg2, "%s_1.gexf" % ctg_id)
     
     p_path_nodes = set(s_path)
     p_path_rc_nodes = set( [reverse_end(v) for v in s_path] )
@@ -436,25 +434,14 @@ def generate_haplotigs_for_ctg(input_):
             sub_hg = sub_hg_0.copy()
             while sub_hg.size() > 5:
                 #print "sub_hg size:", len(sub_hg.nodes())
-                #sources = [n for n in sub_hg.nodes() if sub_hg.in_degree(n) != 1 and n in reachable_both]
-                #sinks = [n for n in sub_hg.nodes() if sub_hg.out_degree(n) != 1 and n in reachable_both]
                 sources = [n for n in sub_hg.nodes() if sub_hg.in_degree(n) != 1 ]
                 sinks = [n for n in sub_hg.nodes() if sub_hg.out_degree(n) != 1 ]
                 
-                #if "000535751:E" in sources and "000341267:B" in sinks:
-                #    print "TEST", nx.shortest_path(sub_hg, "000535751:E", "000341267:B", weight="score") 
 
                 #print "number of sources", len(sources),  sources
                 #print "number of sinks", len(sinks), sinks
-                if len(sources) == 0 and len(sinks) == 0:
-                    continue
-                #if len(sources) == 0:
-                #    sources = [n for n in sub_hg.nodes() if sub_hg.in_degree(n) != 1]
-                #if len(sinks) == 0:
-                #    sinks = [n for n in sub_hg.nodes() if sub_hg.out_degree(n) != 1]
-
-                if len(set(sources) & labelled_node) != 0:
-                    continue
+                if len(sources) == 0 and len(sinks) == 0: #TODO, the rest of the sub-graph are circles, we need to break and print warnning message
+                    break
 
                 longest = [] 
 
@@ -462,6 +449,8 @@ def generate_haplotigs_for_ctg(input_):
                 s_longest = {}
                 for s in sources:
                     #print "test source",s, len(eliminated_sinks)
+                    if s in labelled_node:
+                        continue
                     s_path = []
                     for t in sinks:
                         if t in eliminated_sinks:
@@ -545,10 +534,14 @@ def generate_haplotigs_for_ctg(input_):
         for v, w in sg.edges():
             if "h_edge" not in sg[v][w]:
                 sg[v][w]["h_edge"] = 0
-
-        for v, w in sg2.edges():
-            if "h_edge" not in sg2[v][w]:
-                sg2[v][w]["h_edge"] = 0
+            if v in reachable_all:
+                sg.node[v]["reachable"] = 1
+            else:
+                sg.node[v]["reachable"] = 0
+            if w in reachable_all:
+                sg.node[w]["reachable"] = 1
+            else:
+                sg.node[w]["reachable"] = 0
 
         nx.write_gexf(sg, "%s_0.gexf" % ctg_id)
 
