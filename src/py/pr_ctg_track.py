@@ -69,7 +69,6 @@ def run_track_reads(exe_pool, file_list, min_len, bestn, db_fn):
                 else:
                     heappushpop( bread_to_areads[k], item )
 
-    #rid_to_oid = open(os.path.join( rawread_dir, "raw_read_ids" ) ).read().split("\n")
 
     with open( os.path.join(asm_dir, "read_maps/pread_to_contigs"), "w") as out_f:
         for bread in bread_to_areads:
@@ -84,7 +83,6 @@ def run_track_reads(exe_pool, file_list, min_len, bestn, db_fn):
                     ctg_score[ctg][0] += -s
                     ctg_score[ctg][1] += 1
 
-            #oid = pid_to_oid[int(bread)]
             ctg_score = ctg_score.items()
             ctg_score.sort( key = lambda k: k[1][0] )
             rank = 0
@@ -95,7 +93,6 @@ def run_track_reads(exe_pool, file_list, min_len, bestn, db_fn):
                 else:
                     in_ctg = 0
                 score, count = score_count
-                #print(bread, oid, ctg, count, rank, score, in_ctg, file=out_f) 
                 print(bread, ctg, count, rank, score, in_ctg, file=out_f) 
                 rank += 1
 

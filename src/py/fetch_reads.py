@@ -1,4 +1,5 @@
 from falcon_kit.FastaReader import FastaReader
+import argparse
 import os
 import glob
 import sys
@@ -21,8 +22,15 @@ def main():
     parser.add_argument('--read_map_dir', type=str, default="./2-asm-falcon/read_maps", help='path to the read-contig map directory') 
     parser.add_argument('--base_dir', default="./3-unzip/reads", type=str, help='the output base_dir, default to current working directory')
 
-    rawread_id_file = os.path.join( rawread_dir, "raw_read_ids" )
-    pread_id_file = os.path.join( pread_dir, "pread_ids" ) 
+    args = parser.parse_args()
+    read_fofn = args.fofn
+    ctg_fa = args.ctg_fa
+    ctg_id = args.ctg_id
+    read_map_dir = args.read_map_dir
+    base_dir = args.base_dir
+
+    rawread_id_file = os.path.join( read_map_dir, "raw_read_ids" )
+    pread_id_file = os.path.join( read_map_dir, "pread_ids" ) 
 
     rid_to_oid = open(rawread_id_file).read().split("\n")  #daligner raw read id to the original ids
     pid_to_fid = open(pread_id_file).read().split("\n")  #daligner pread id to the fake ids
@@ -31,15 +39,6 @@ def main():
         fid = pid_to_fid[int(pid)]
         rid = int(fid.split("/")[1])/10
         return rid_to_oid[int(rid)]
-    
-    
-    
-    args = parser.parse_args()
-    read_fofn = args.fofn
-    ctg_fa = args.ctg_fa
-    ctg_id = args.ctg_id
-    read_map_dir = args.read_map_dir
-    base_dir = args.base_dir
 
     ref_fasta = FastaReader(ctg_fa)
     all_ctg_ids = set()

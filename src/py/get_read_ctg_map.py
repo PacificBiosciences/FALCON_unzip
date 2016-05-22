@@ -27,7 +27,7 @@ def get_read_ctg_map(rawread_dir=rawread_dir, pread_dir=pread_dir, asm_dir=asm_d
     wf = PypeMPWorkflow()
 
     rawread_db = makePypeLocalFile( os.path.join( rawread_dir, "raw_reads.db" ) )
-    rawread_id_file = makePypeLocalFile( os.path.join( rawread_dir, "raw_read_ids" ) )
+    rawread_id_file = makePypeLocalFile( os.path.join( read_map_dir, "raw_read_ids" ) )
 
     @PypeTask( inputs = {"rawread_db": rawread_db}, 
                outputs =  {"rawread_id_file": rawread_id_file},
@@ -41,7 +41,7 @@ def get_read_ctg_map(rawread_dir=rawread_dir, pread_dir=pread_dir, asm_dir=asm_d
     wf.addTask( dump_rawread_ids )
 
     pread_db = makePypeLocalFile( os.path.join( pread_dir, "preads.db" ) )
-    pread_id_file = makePypeLocalFile( os.path.join( pread_dir, "pread_ids" ) )
+    pread_id_file = makePypeLocalFile( os.path.join( read_map_dir, "pread_ids" ) )
 
     @PypeTask( inputs = {"pread_db": pread_db}, 
                outputs =  {"pread_id_file": pread_id_file},
