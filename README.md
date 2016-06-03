@@ -1,5 +1,8 @@
 # FALCON_unzip
 
+FALCON-Unzip contains the modules that works with FALCON ( https://github.com/PacificBiosciences/FALCON,  https://github.com/PacificBiosciences/FALCON-integrate) for full diploid assembly (represent haplotype sequences as "haplotigs" as assembly output). A manuscript is deposited in BioXriv () for our evalution and the application of the algorithms and the software on multiple diploid genomes. You can find more information here: https://github.com/PacificBiosciences/FALCON/wiki/FALCON-FALCON-Unzip-%22For-Phased-Diploid-Genome-Assembly-with-Single-Molecule-Real-Time-Sequencing%22
+
+
 See `example/unzip.sh` for end-to-end work. You do need to have run it in a working diretory with Falcon output and all original Daligner overlap data.
 For generating quiver consensus, you will need PacBio raw sequence data with "signal pulse" information in `bam` format. You can config the bam-file input using a configuration sent to `fc_quvier.py`.
 
