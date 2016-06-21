@@ -321,6 +321,49 @@ def generate_haplotigs_for_ctg(input_):
 
     for v, w in list(edge_to_remove):
         sg2.remove_edge(v, w)
+
+    ## remove some new short cut due to repeats in the haplotype edges
+    edge_to_remove = set()
+    with open(os.path.join(out_dir, "path_len.%s" % ctg_id), "w") as f:
+
+        all_length_from_s = nx.shortest_path_length(sg, source=s_node) 
+        edge_to_remove = set()
+
+        for w in all_length_from_s:
+            longest = 0
+            if sg.in_degree(w) >= 2:
+                for e in sg.in_edges(w): 
+                    v = e[0]
+                    if v in all_length_from_s:
+                        len_ = all_length_from_s[v] 
+                        if len_ > longest:
+                            longest = len_
+                if longest == 0:
+                    continue
+                for e in sg.in_edges(w): 
+                    v = e[0]
+                    if v in all_length_from_s:
+                        len_ = all_length_from_s[v] 
+                        print >>f, ctg_id, "link_lengths", v, w, longest, len_
+                        if longest - len_ > 10 and sg[v][w]["src"] != "OP":  #make sure we always have one path drived from the original graph from s to t
+                            edge_to_remove.add( (v, w) )
+                            rv, rw = reverse_end(v), reverse_end(w)
+                            edge_to_remove.add( (rw, rv) )
+
+        for v, w in list(edge_to_remove):
+            sg.remove_edge(v, w)
+            print >>f, ctg_id, "removed", v, w
+
+        for v, w in list(edge_to_remove):
+            try:
+                sg2.remove_edge(v, w)
+            except Exception:
+                pass
+
+
+    nx.write_gexf(sg, os.path.join(out_dir, "sg.gexf" ))
+    nx.write_gexf(sg2, os.path.join(out_dir, "sg2.gexf" ))
+
     try: 
         s_path = nx.shortest_path(sg2, source=s_node, target=t_node, weight="score")
     except nx.exception.NetworkXNoPath:
@@ -612,6 +655,6 @@ if __name__ == "__main__":
             continue
         exe_list.append( (ctg_id, os.path.join(".", ctg_id)) )
 
-    exec_pool = Pool(24)
+    exec_pool = Pool(4)
     exec_pool.map( generate_haplotigs_for_ctg, exe_list)
     #map( generate_haplotigs_for_ctg, exe_list)
