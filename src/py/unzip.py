@@ -282,8 +282,28 @@ def task_hasm(self):
     script.append( "fc_ovlp_filter_with_phase.py --fofn ../../2-asm-falcon/las.fofn --max_diff 120 --max_cov 120 --min_cov 1 --n_core 12 --min_len 2500 --db ../../1-preads_ovl/preads.db --rid_phase_map ./rid_to_phase.all > preads.p_ovl")
     script.append( "fc_phased_ovlp_to_graph.py preads.p_ovl --min_len 2500 > fc.log" )
     script.append( "fc_graphs_to_h_tigs.py --fc_asm_path ../../2-asm-falcon/ --fc_hasm_path ./ --ctg_id all --rid_phase_map ./rid_to_phase.all --fasta ../../1-preads_ovl/preads4falcon.fasta" )
+    more_script = \
+"""
+WD=$PWD
+for f in `cat ../reads/ctg_list `;do cd $WD/$f; fc_dedup_h_tigs.py $f; done
 
-    #script.append( "fc_dedup_h_tigs.py" )
+## prepare for quviering the haplotig
+cd $WD/..
+if [ -e "all_phased_reads" ]; then rm all_phased_reads; fi
+if [ -e "all_h_ctg_ids" ]; then rm all_h_ctg_ids; fi
+if [ -e "all_p_ctg_edges" ]; then rm all_p_ctg_edges; fi
+if [ -e "all_p_ctg.fa" ]; then rm all_p_ctg.fa; fi
+if [ -e "all_h_ctg.fa" ]; then rm all_h_ctg.fa; fi
+
+find 0-phasing -name "phased_reads" | sort | xargs cat >> all_phased_reads
+find 1-hasm -name "h_ctg_ids.*" | sort | xargs cat >> all_h_ctg_ids
+find 1-hasm -name "p_ctg_edges.*" | sort | xargs cat >> all_p_ctg_edges
+find 1-hasm -name "h_ctg_edges.*" | sort | xargs cat >> all_h_ctg_edges
+find 1-hasm -name "p_ctg.*.fa" | sort | xargs cat >> all_p_ctg.fa
+find 1-hasm -name "h_ctg.*.fa" | sort | xargs cat >> all_h_ctg.fa
+cd ../
+"""
+    script.append( more_script )  # a little bit hacky here, we should improve
     script.append( "date" )
     script.append( "touch {job_done}".format(job_done = job_done) )
 
@@ -392,15 +412,8 @@ def unzip_all(config):
 
     wf.addTask(hasm_task)
 
-
-    #print aln1_outs
     wf.refreshTargets()
         
-
-
-
-
-
 
 def main(argv=sys.argv):
 
@@ -451,6 +464,5 @@ def main(argv=sys.argv):
               "unzip_concurrent_jobs":unzip_concurrent_jobs}
 
     support.job_type = "SGE" #tmp hack until we have a configuration parser
-
 
     unzip_all(config)
