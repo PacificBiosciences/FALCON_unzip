@@ -152,11 +152,11 @@ def task_track_reads(self):
     script.append( "hostname" )
     script.append( "date" )
     script.append( "cd {wd}".format(wd = wd) )
-    script.append( "fc_get_read_ctg_map.py" )
-    script.append( "fc_rr_ctg_track.py" )
-    script.append( "fc_pr_ctg_track.py" )
+    script.append( "python -m falcon_kit.mains.get_read_ctg_map" )
+    script.append( "python -m falcon_kit.mains.rr_ctg_track" )
+    script.append( "python -m falcon_kit.mains.pr_ctg_track" )
     script.append( "mkdir -p 3-unzip/reads/" )
-    script.append( "fc_fetch_reads.py" )
+    script.append( "python -m falcon_kit.mains.fetch_reads" )
     script.append( "date" )
     script.append( "touch {job_done}".format(job_done = job_done) )
 
@@ -416,7 +416,6 @@ def unzip_all(config):
         
 
 def main(argv=sys.argv):
-
 
     if len(argv) < 2:
         print "you need to provide a configuration file to specific a couple cluster running environment"
