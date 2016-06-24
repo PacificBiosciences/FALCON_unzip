@@ -321,6 +321,8 @@ def generate_haplotigs_for_ctg(input_):
             rv, rw = reverse_end(v), reverse_end(w)
             edge_to_remove.add( (rw, rv) )
 
+    for v, w in list(edge_to_remove):
+        sg2.remove_edge(v, w)
 
     ## remove some new short cut due to repeats in the haplotype edges
     edge_to_remove = set()
@@ -364,8 +366,7 @@ def generate_haplotigs_for_ctg(input_):
     nx.write_gexf(sg, os.path.join(out_dir, "sg.gexf" ))
     nx.write_gexf(sg2, os.path.join(out_dir, "sg2.gexf" ))
 
-    for v, w in list(edge_to_remove):
-        sg2.remove_edge(v, w)
+
     try: 
         s_path = nx.shortest_path(sg2, source=s_node, target=t_node, weight="score")
     except nx.exception.NetworkXNoPath:
