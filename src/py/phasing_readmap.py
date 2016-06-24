@@ -15,6 +15,7 @@ def get_phasing_readmap(args):
     pread_id_file = os.path.join( read_map_dir, "pread_ids" ) 
     rid_to_oid = open(rawread_id_file).read().split("\n")  #daligner raw read id to the original ids
     pid_to_fid = open(pread_id_file).read().split("\n")  #daligner pread id to the fake ids
+
     def pid_to_oid(pid):
         fid = pid_to_fid[int(pid)]
         rid = int(fid.split("/")[1])/10
