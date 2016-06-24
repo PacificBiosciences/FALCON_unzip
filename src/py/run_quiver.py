@@ -261,7 +261,7 @@ def main(argv=sys.argv):
 
     input_bam_fofn = "input_bam.fofn"
     if config.has_option('Unzip', 'input_bam_fofn'):
-        smrt_bin = config.get('Unzip', 'input_bam_fofn')
+        input_bam_fofn = config.get('Unzip', 'input_bam_fofn')
 
 
     quiver_concurrent_jobs = 8
