@@ -54,14 +54,14 @@ wf.addTask( dump_pread_ids )
 wf.refreshTargets() # block
 
 all_raw_las_files = {}
-for las_fn in glob.glob( os.path.join( rawread_dir, "raw_reads.*.las") ):
+for las_fn in glob.glob( os.path.join( rawread_dir, "m*/raw_reads.*.las") ):
     idx = las_fn.split("/")[-1] # well, we will use regex someday to parse to get the number
     idx = int(idx.split(".")[1]) 
     las_file = makePypeLocalFile( las_fn )
     all_raw_las_files["r_las_%s" % idx] = las_file 
 
 all_pread_las_files = {}
-for las_fn in glob.glob( os.path.join( pread_dir, "preads.*.las") ):
+for las_fn in glob.glob( os.path.join( pread_dir, "m*/preads.*.las") ):
     idx = las_fn.split("/")[-1] # well, we will use regex someday to parse to get the number
     idx = int(idx.split(".")[1]) 
     las_file = makePypeLocalFile( las_fn )
