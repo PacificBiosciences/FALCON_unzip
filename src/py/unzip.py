@@ -271,17 +271,17 @@ def task_hasm(self):
     script_dir = os.path.join( wd )
     script_fn =  os.path.join( script_dir , "hasm.sh")
 
-    script = []
+    script = """\
+set -vex
+trap 'touch {job_done}.exit' EXIT
+hostname
+date
+cd {wd}
 
-    script.append( "set -vex" )
-    script.append( "trap 'touch {job_done}.exit' EXIT".format(job_done = job_done) )
-    script.append( "hostname" )
-    script.append( "date" )
-    script.append( "cd {wd}".format(wd = wd) )
-
-    script.append( "fc_ovlp_filter_with_phase.py --fofn ../../2-asm-falcon/las.fofn --max_diff 120 --max_cov 120 --min_cov 1 --n_core 12 --min_len 2500 --db ../../1-preads_ovl/preads.db --rid_phase_map ./rid_to_phase.all > preads.p_ovl")
-    script.append( "fc_phased_ovlp_to_graph.py preads.p_ovl --min_len 2500 > fc.log" )
-    script.append( "fc_graphs_to_h_tigs.py --fc_asm_path ../../2-asm-falcon/ --fc_hasm_path ./ --ctg_id all --rid_phase_map ./rid_to_phase.all --fasta ../../1-preads_ovl/preads4falcon.fasta" )
+fc_ovlp_filter_with_phase.py --fofn ../../2-asm-falcon/las.fofn --max_diff 120 --max_cov 120 --min_cov 1 --n_core 12 --min_len 2500 --db ../../1-preads_ovl/preads.db --rid_phase_map ./rid_to_phase.all > preads.p_ovl
+fc_phased_ovlp_to_graph.py preads.p_ovl --min_len 2500 > fc.log
+fc_graphs_to_h_tigs.py --fc_asm_path ../../2-asm-falcon/ --fc_hasm_path ./ --ctg_id all --rid_phase_map ./rid_to_phase.all --fasta ../../1-preads_ovl/preads4falcon.fasta
+""".format(**locals())
     more_script = \
 """
 WD=$PWD
