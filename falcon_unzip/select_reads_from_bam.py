@@ -28,14 +28,14 @@ def main(args):
     for row in open(sys.argv[1]):
         fn = row.strip()
         samfile = pysam.AlignmentFile(fn, "rb", check_sq = False )
-        if header == None: 
+        if header == None:
             header = samfile.header
         else:
             header["RG"].extend( samfile.header["RG"] )
         samfile.close()
 
     PG = header.pop("PG") #remove PG line as there might be a bug that generates no readable chrs
-    #print PG 
+    #print PG
 
     base_dir = os.getcwd()
     #outfile = pysam.AlignmentFile( os.path.join(base_dir, "header.sam" ), "wh", header=header )

@@ -144,7 +144,7 @@ def task_track_reads(self):
     sge_track_reads = config["sge_track_reads"]
     script_dir = os.path.join( wd )
     script_fn =  os.path.join( script_dir , "track_reads.sh")
-    
+
     script = []
     script.append( "set -vex" )
     script.append( "trap 'touch {job_done}.exit' EXIT".format(job_done = job_done) )
@@ -200,10 +200,10 @@ def task_run_blasr(self):
     script.append( "time {blasr} {read_fasta} {ref_fasta} -noSplitSubreads -clipping subread\
  -hitPolicy randombest -randomSeed 42 -bestn 1 -minPctIdentity 70.0\
  -minMatch 12  -nproc 24 -sam -out tmp_aln.sam".format(blasr = blasr,
-                                                       read_fasta = read_fasta, 
+                                                       read_fasta = read_fasta,
                                                        ref_fasta = ref_fasta) )
 
-    script.append( "{samtools} view -bS tmp_aln.sam | {samtools} sort - {ctg_id}_sorted".format( samtools = samtools, ctg_id = ctg_id) ) 
+    script.append( "{samtools} view -bS tmp_aln.sam | {samtools} sort - {ctg_id}_sorted".format( samtools = samtools, ctg_id = ctg_id) )
     script.append( "{samtools} index {ctg_id}_sorted.bam".format( samtools = samtools, ctg_id = ctg_id) )
     script.append( "rm tmp_aln.sam" )
     script.append( "date" )
@@ -351,14 +351,14 @@ def unzip_all(config):
         # inputs
         ref_fasta = makePypeLocalFile("./3-unzip/reads/{ctg_id}_ref.fa".format(ctg_id = ctg_id))
         read_fasta = makePypeLocalFile("./3-unzip/reads/{ctg_id}_reads.fa".format(ctg_id = ctg_id))
-        
+
         # outputs
         wd = os.path.join( os.getcwd(),  "./3-unzip/0-phasing/{ctg_id}/".format( ctg_id = ctg_id ) )
         mkdir(wd)
         ctg_aln_out = makePypeLocalFile( os.path.join( wd, "{ctg_id}_sorted.bam".format( ctg_id = ctg_id ) ) )
         job_done = makePypeLocalFile( os.path.join( wd, "aln_{ctg_id}_done".format( ctg_id = ctg_id ) ) )
-    
-        parameters = {"job_uid":"aln-"+ctg_id, "wd": wd, "config":config, "ctg_id": ctg_id} 
+
+        parameters = {"job_uid":"aln-"+ctg_id, "wd": wd, "config":config, "ctg_id": ctg_id}
         make_blasr_task = PypeTask(inputs = {"ref_fasta": ref_fasta, "read_fasta": read_fasta},
                                    outputs = {"ctg_aln_out": ctg_aln_out, "job_done": job_done},
                                    parameters = parameters,
@@ -372,7 +372,7 @@ def unzip_all(config):
         rid_to_phase_out = makePypeLocalFile( os.path.join( wd, "rid_to_phase.{ctg_id}".format( ctg_id = ctg_id ) ) )
         all_ctg_out[ "r2p.{ctg_id}".format( ctg_id = ctg_id ) ] = rid_to_phase_out
 
-        parameters = {"job_uid":"ha-"+ctg_id, "wd": wd, "config":config, "ctg_id": ctg_id} 
+        parameters = {"job_uid":"ha-"+ctg_id, "wd": wd, "config":config, "ctg_id": ctg_id}
         make_phasing_task = PypeTask(inputs = {"ref_fasta": ref_fasta, "aln_bam":ctg_aln_out},
                                    outputs = {"job_done": job_done},
                                    parameters = parameters,
@@ -382,7 +382,7 @@ def unzip_all(config):
         wf.addTask(phasing_task)
 
     wf.refreshTargets()
-    
+
     hasm_wd = os.path.abspath("./3-unzip/1-hasm/")
     mkdir(hasm_wd)
     rid_to_phase_all =  makePypeLocalFile( os.path.join(hasm_wd, "rid_to_phase.all") )
@@ -414,7 +414,7 @@ def unzip_all(config):
     wf.addTask(hasm_task)
 
     wf.refreshTargets()
-        
+
 
 def main(argv=sys.argv):
 
@@ -431,7 +431,7 @@ def main(argv=sys.argv):
     if config.has_option('General', 'job_type'):
         job_type = config.get('General', 'job_type')
 
-    sge_blasr_aln = " -pe smp 24 -q bigmem " 
+    sge_blasr_aln = " -pe smp 24 -q bigmem "
     if config.has_option('Unzip', 'sge_blasr_aln'):
         sge_blasr_aln = config.get('Unzip', 'sge_blasr_aln')
 
@@ -442,7 +442,7 @@ def main(argv=sys.argv):
     sge_phasing = " -pe smp 12 -q bigmem"
     if config.has_option('Unzip', 'sge_phasing'):
         sge_phasing = config.get('Unzip', 'sge_phasing')
-    
+
     sge_hasm = " -pe smp 48 -q bigmem"
     if config.has_option('Unzip', 'sge_hasm'):
         sge_hasm = config.get('Unzip', 'sge_hasm')

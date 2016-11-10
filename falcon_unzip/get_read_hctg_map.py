@@ -1,4 +1,4 @@
-from pypeflow.common import * 
+from pypeflow.common import *
 from pypeflow.data import PypeLocalFile, makePypeLocalFile, fn
 from pypeflow.task import PypeTask, PypeThreadTaskBase, PypeTaskBase
 from pypeflow.controller import PypeWorkflow, PypeMPWorkflow, PypeThreadWorkflow
@@ -31,9 +31,9 @@ def get_read_hctg_map(rawread_dir, pread_dir, asm_dir, hasm_dir):
                "p_ctg_edges": p_ctg_edges,
                "h_ctg_ids": h_ctg_ids}
 
-    @PypeTask( inputs = inputs, 
-               outputs = {"read_to_contig_map": read_to_contig_map}, 
-               TaskType = PypeThreadTaskBase, 
+    @PypeTask( inputs = inputs,
+               outputs = {"read_to_contig_map": read_to_contig_map},
+               TaskType = PypeThreadTaskBase,
                URL = "task://localhost/get_ctg_read_map" )
 
     def generate_read_to_hctg_map(self):
@@ -41,7 +41,7 @@ def get_read_hctg_map(rawread_dir, pread_dir, asm_dir, hasm_dir):
         rawread_id_file = fn( self.rawread_id_file )
         pread_id_file = fn( self.pread_id_file )
         read_to_contig_map = fn( self.read_to_contig_map )
-        
+
         pread_did_to_rid = open(pread_id_file).read().split("\n")
         rid_to_oid = open(rawread_id_file).read().split("\n")
 

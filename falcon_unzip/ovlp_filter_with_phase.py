@@ -75,17 +75,17 @@ def filter_stage1(input_):
 
                 left_count = overlap_data["5p"]
                 right_count = overlap_data["3p"]
-            
+
                 if abs(left_count - right_count) > max_diff:
                     ignore_rtn.append( current_q_id )
                 elif left_count > max_ovlp or right_count > max_ovlp:
                     ignore_rtn.append( current_q_id )
-                elif left_count < min_ovlp or right_count < min_ovlp: 
+                elif left_count < min_ovlp or right_count < min_ovlp:
                     ignore_rtn.append( current_q_id )
-                
-                #remove unphased reads if they are sandwiched by the reads from the same phase 
+
+                #remove unphased reads if they are sandwiched by the reads from the same phase
                 if current_q_id not in arid2phase:
-                    left_set = overlap_phase["5p"] 
+                    left_set = overlap_phase["5p"]
                     right_set = overlap_phase["3p"]
                     if len( left_set & right_set ) > 0:
                         ignore_rtn.append( current_q_id )
@@ -113,11 +113,11 @@ def filter_stage1(input_):
             if q_s == 0:
                 overlap_data["5p"] += 1
                 if t_id in arid2phase:
-                    overlap_phase["5p"].add( arid2phase[t_id] ) 
+                    overlap_phase["5p"].add( arid2phase[t_id] )
             if q_e == q_l:
                 overlap_data["3p"] += 1
                 if t_id in arid2phase:
-                    overlap_phase["3p"].add( arid2phase[t_id] ) 
+                    overlap_phase["3p"].add( arid2phase[t_id] )
 
         if q_id !=  None:
             left_count = overlap_data["5p"]
@@ -126,17 +126,17 @@ def filter_stage1(input_):
                 ignore_rtn.append( current_q_id )
             elif left_count > max_ovlp or right_count > max_ovlp:
                 ignore_rtn.append( current_q_id )
-            elif left_count < min_ovlp or right_count < min_ovlp: 
+            elif left_count < min_ovlp or right_count < min_ovlp:
                 ignore_rtn.append( current_q_id )
 
-            #remove unphased reads if they are sandwiched by the reads from the same phase 
+            #remove unphased reads if they are sandwiched by the reads from the same phase
             if current_q_id not in arid2phase:
-                left_set = overlap_phase["5p"] 
+                left_set = overlap_phase["5p"]
                 right_set = overlap_phase["3p"]
                 if len( left_set & right_set ) > 0:
                     ignore_rtn.append( current_q_id )
-                
-            
+
+
         return fn, ignore_rtn
 
     except (KeyboardInterrupt, SystemExit):
@@ -180,7 +180,7 @@ def filter_stage2(input_):
                 contained_id.add(q_id)
             if l[-1] == "contains":
                 contained_id.add(t_id)
-        return fn, contained_id 
+        return fn, contained_id
 
     except (KeyboardInterrupt, SystemExit):
         return
@@ -221,10 +221,10 @@ def filter_stage3(input_):
                 for i in xrange(len(left)):
                     inphase, score, m_range, ovlp = left[i]
                     ovlp_output.append(ovlp)
-                    #print " ".join(ovlp), read_end_data[current_q_id] 
+                    #print " ".join(ovlp), read_end_data[current_q_id]
                     if i >= bestn and m_range > 1000:
                         break
-                
+
                 for i in xrange(len(right)):
                     inphase, score, m_range, ovlp = right[i]
                     ovlp_output.append(ovlp)
@@ -273,7 +273,7 @@ def filter_stage3(input_):
         for i in xrange(len(left)):
             inphase, score, m_range, ovlp = left[i]
             ovlp_output.append(ovlp)
-            #print " ".join(ovlp), read_end_data[current_q_id] 
+            #print " ".join(ovlp), read_end_data[current_q_id]
             if i >= bestn and m_range > 1000:
                 break
 
@@ -322,15 +322,15 @@ def main(argv=sys.argv):
             arid2phase[row[0]] = (row[1], row[2], row[3]) #ctg_id, phase_blk_id, phase_id
 
     exe_pool = Pool(args.n_core)
-    
+
     file_list = open(args.fofn).read().split("\n")
     inputs = []
     for fn in file_list:
         if len(fn) != 0:
             inputs.append( (db_fn, fn, max_diff, max_cov, min_cov, min_len) )
-    
+
     ignore_all = []
-    for res in exe_pool.imap(filter_stage1, inputs):  
+    for res in exe_pool.imap(filter_stage1, inputs):
         ignore_all.extend( res[1] )
 
     inputs = []
@@ -339,7 +339,7 @@ def main(argv=sys.argv):
         if len(fn) != 0:
             inputs.append( (db_fn, fn, max_diff, max_cov, min_cov, min_len, ignore_all) )
     contained = set()
-    for res in exe_pool.imap(filter_stage2, inputs):  
+    for res in exe_pool.imap(filter_stage2, inputs):
         contained.update(res[1])
         #print res[0], len(res[1]), len(contained)
 
@@ -349,7 +349,6 @@ def main(argv=sys.argv):
     for fn in file_list:
         if len(fn) != 0:
             inputs.append( (db_fn, fn, max_diff, max_cov, min_cov, min_len, ignore_all, contained, bestn) )
-    for res in exe_pool.imap(filter_stage3, inputs):  
+    for res in exe_pool.imap(filter_stage3, inputs):
         for l in res[1]:
             print " ".join(l)
-

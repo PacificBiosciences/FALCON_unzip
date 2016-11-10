@@ -147,7 +147,7 @@ def task_track_reads(self):
     sge_track_reads = config["sge_track_reads"]
     script_dir = os.path.join( wd )
     script_fn =  os.path.join( script_dir , "track_reads_h.sh")
-    
+
     script = []
     script.append( "set -vex" )
     script.append( "trap 'touch {job_done}.exit' EXIT".format(job_done = job_done) )
@@ -184,7 +184,7 @@ def task_run_quiver(self):
     wd = self.parameters["wd"]
     config = self.parameters["config"]
     ctg_id = self.parameters["ctg_id"]
-    
+
     smrt_bin = config["smrt_bin"]
     sge_quiver = config["sge_quiver"]
     job_type = config["job_type"]
@@ -203,16 +203,16 @@ def task_run_quiver(self):
     script.append( "hostname" )
     script.append( "date" )
     script.append( "cd {wd}".format(wd = wd) )
-    
+
     script.append( "{samtools} faidx {ref_fasta}".format( samtools=samtools, ref_fasta=ref_fasta ) )
     script.append( "{samtools} view -b -S {read_sam} > {ctg_id}.bam".format( samtools=samtools, read_sam = read_sam, ctg_id = ctg_id ) )
     script.append( "{pbalign} --tmpDir=/localdisk/scratch/ --nproc=24 --minAccuracy=0.75 --minLength=50\
             --minAnchorSize=12 --maxDivergence=30 --concordant --algorithm=blasr\
             --algorithmOptions=-useQuality --maxHits=1 --hitPolicy=random --seed=1\
-            {ctg_id}.bam {ref_fasta} aln-{ctg_id}.bam".format( pbalign=pbalign , ctg_id = ctg_id, ref_fasta = ref_fasta)) 
-    script.append( "#{makePbi} --referenceFasta {ref_fasta} aln-{ctg_id}.bam".format(makePbi = makePbi, ref_fasta = ref_fasta, ctg_id = ctg_id) ) 
+            {ctg_id}.bam {ref_fasta} aln-{ctg_id}.bam".format( pbalign=pbalign , ctg_id = ctg_id, ref_fasta = ref_fasta))
+    script.append( "#{makePbi} --referenceFasta {ref_fasta} aln-{ctg_id}.bam".format(makePbi = makePbi, ref_fasta = ref_fasta, ctg_id = ctg_id) )
     script.append( "({variantCaller} -x 5 -X 120 -q 20 -j 24 -r {ref_fasta} aln-{ctg_id}.bam\
-            -o {cns_fasta} -o {cns_fastq}) || echo quvier failed".format( variantCaller = variantCaller, ctg_id = ctg_id, ref_fasta = ref_fasta, 
+            -o {cns_fasta} -o {cns_fastq}) || echo quvier failed".format( variantCaller = variantCaller, ctg_id = ctg_id, ref_fasta = ref_fasta,
                                                    cns_fasta=cns_fasta, cns_fastq=cns_fastq ))
 
     script.append( "date" )
@@ -251,7 +251,7 @@ def main(argv=sys.argv):
     if config.has_option('Unzip', 'sge_track_reads'):
         sge_track_reads = config.get('Unzip', 'sge_track_reads')
 
-    sge_quiver = " -pe smp 24 -q bigmem " 
+    sge_quiver = " -pe smp 24 -q bigmem "
     if config.has_option('Unzip', 'sge_quiver'):
         sge_quiver = config.get('Unzip', 'sge_quiver')
 
@@ -333,7 +333,7 @@ def main(argv=sys.argv):
                 with open(fn(ref_fasta),"w") as f:
                     print >>f, ">"+ctg_id
                     print >>f, sequence
-            parameters = {"job_uid":"q-"+ctg_id, "wd": wd, "config":config, "ctg_id": ctg_id } 
+            parameters = {"job_uid":"q-"+ctg_id, "wd": wd, "config":config, "ctg_id": ctg_id }
             make_quiver_task = PypeTask(inputs = {"ref_fasta": ref_fasta, "read_sam": read_sam},
                                        outputs = {"cns_fasta": cns_fasta, "cns_fastq": cns_fastq, "job_done": job_done},
                                        parameters = parameters,
@@ -341,7 +341,7 @@ def main(argv=sys.argv):
                                        URL = "task://localhost/q_{ctg_id}".format( ctg_id = ctg_id ) )
             quiver_task = make_quiver_task(task_run_quiver)
             wf.addTask( quiver_task )
-        
+
 
 
     wf.refreshTargets()
@@ -355,12 +355,9 @@ def main(argv=sys.argv):
         os.system("zcat {cns_fastq} >> ./4-quiver/cns_output/cns_p_ctg.fastq".format( cns_fastq=fn(cns_fastq) ) )
 
 
-        
+
     os.system("rm ./4-quiver/cns_output/cns_h_ctg.fasta")
     os.system("rm ./4-quiver/cns_output/cns_h_ctg.fastq")
     for cns_fasta, cns_fastq in sorted(h_ctg_out):
         os.system("zcat {cns_fasta} >> ./4-quiver/cns_output/cns_h_ctg.fasta".format( cns_fasta=fn(cns_fasta) ) )
         os.system("zcat {cns_fastq} >> ./4-quiver/cns_output/cns_h_ctg.fastq".format( cns_fastq=fn(cns_fastq) ) )
-
-
-
