@@ -303,13 +303,13 @@ find 1-hasm -name "h_ctg_edges.*" | sort | xargs cat >> all_h_ctg_edges
 find 1-hasm -name "p_ctg.*.fa" | sort | xargs cat >> all_p_ctg.fa
 find 1-hasm -name "h_ctg.*.fa" | sort | xargs cat >> all_h_ctg.fa
 cd ../
+date
 """
-    script.append( more_script )  # a little bit hacky here, we should improve
-    script.append( "date" )
-    script.append( "touch {job_done}".format(job_done = job_done) )
+    script += more_script # a little bit hacky here, we should improve
+    script += "touch {job_done}\n".format(job_done = job_done)
 
     with open(script_fn,"w") as script_file:
-        script_file.write("\n".join(script) + '\n')
+        script_file.write(script)
 
     job_data = support.make_job_data(self.URL, script_fn)
     job_data["sge_option"] = sge_hasm
