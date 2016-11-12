@@ -267,7 +267,7 @@ def task_phasing(self):
     #wait_for_file(job_done, task=self, job_name=job_data['job_name'])
 
 def task_hasm(self):
-
+    rid_to_phase_all = fn(self.rid_to_phase_all)
     job_done = fn(self.job_done)
     config = self.parameters["config"]
     sge_hasm = config["sge_hasm"]
@@ -286,10 +286,11 @@ hostname
 date
 cd {wd}
 
-fc_ovlp_filter_with_phase.py --fofn ../../2-asm-falcon/las.fofn --max_diff 120 --max_cov 120 --min_cov 1 --n_core 12 --min_len 2500 --db ../../1-preads_ovl/preads.db --rid_phase_map ./rid_to_phase.all > preads.p_ovl
+fc_ovlp_filter_with_phase.py --fofn ../../2-asm-falcon/las.fofn --max_diff 120 --max_cov 120 --min_cov 1 --n_core 12 --min_len 2500 --db ../../1-preads_ovl/preads.db --rid_phase_map {rid_to_phase_all} > preads.p_ovl
 fc_phased_ovlp_to_graph.py preads.p_ovl --min_len 2500 > fc.log
 ln -sf db2falcon/preads4falcon.fasta ../../1-preads_ovl/
 fc_graphs_to_h_tigs.py --fc_asm_path ../../2-asm-falcon/ --fc_hasm_path ./ --ctg_id all --rid_phase_map ./rid_to_phase.all --fasta ../../1-preads_ovl/preads4falcon.fasta
+fc_graphs_to_h_tigs.py --fc_asm_path ../../2-asm-falcon/ --fc_hasm_path ./ --ctg_id all --rid_phase_map {rid_to_phase_all} --fasta preads4falcon.fasta
 """.format(**locals())
     more_script = \
 """
@@ -318,12 +319,9 @@ date
 
     with open(script_fn,"w") as script_file:
         script_file.write(script)
+    self.generated_script_fn = script_fn
 
-    #job_data = support.make_job_data(self.URL, script_fn)
     #job_data["sge_option"] = sge_hasm
-    #run_script(job_data, job_type = job_type)
-    #wait_for_file(job_done, task=self, job_name=job_data['job_name'])
-
 
 def unzip_all(config):
     unzip_concurrent_jobs = config["unzip_concurrent_jobs"]
