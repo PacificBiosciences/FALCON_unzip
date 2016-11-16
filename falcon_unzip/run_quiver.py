@@ -2,6 +2,11 @@ from falcon_kit import run_support as support
 from pypeflow.data import PypeLocalFile, makePypeLocalFile, fn
 from pypeflow.task import PypeTask, PypeThreadTaskBase, PypeTaskBase
 from pypeflow.controller import PypeWorkflow, PypeThreadWorkflow
+#from pypeflow.simple_pwatcher_bridge import (
+#        PypeLocalFile, makePypeLocalFile, fn,
+#        PypeTask,
+#        PypeProcWatcherWorkflow, MyFakePypeThreadTaskBase)
+#PypeThreadTaskBase = MyFakePypeThreadTaskBase
 from falcon_kit.FastaReader import FastaReader
 import glob
 import os
