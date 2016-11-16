@@ -301,7 +301,7 @@ fc_graphs_to_h_tigs.py --fc_asm_path ../../2-asm-falcon/ --fc_hasm_path ./ --ctg
     more_script = \
 """
 WD=$PWD
-for f in `cat ../reads/ctg_list `;do cd $WD/$f; fc_dedup_h_tigs.py $f; done
+for f in `cat ../reads/ctg_list `; mkdir -p $WD/$f; do cd $WD/$f; fc_dedup_h_tigs.py $f; done
 
 ## prepare for quviering the haplotig
 cd $WD/..
