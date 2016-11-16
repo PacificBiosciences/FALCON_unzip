@@ -153,15 +153,15 @@ def task_track_reads(self):
     script = []
     script.append( "set -vex" )
     script.append( "trap 'touch {job_done}.exit' EXIT".format(job_done = job_done) )
-    script.append( "cd %s" % wd )
     script.append( "hostname" )
     script.append( "date" )
-    script.append( "cd {wd}".format(wd = wd) )
+    script.append( "cd {topdir}".format(topdir = '../..') )
     script.append( "python -m falcon_kit.mains.get_read_ctg_map" )
     script.append( "python -m falcon_kit.mains.rr_ctg_track" )
     script.append( "python -m falcon_kit.mains.pr_ctg_track" )
-    script.append( "mkdir -p 3-unzip/reads/" )
+    #script.append( "mkdir -p 3-unzip/reads/" )
     script.append( "python -m falcon_kit.mains.fetch_reads" )
+    script.append( "cd %s" % wd )
     script.append( "date" )
     script.append( "touch {job_done}".format(job_done = job_done) )
 
@@ -279,6 +279,8 @@ def task_hasm(self):
     script_dir = os.path.join( wd )
     script_fn =  os.path.join( script_dir , "hasm.sh")
 
+    las_fofn = '../../2-asm-falcon/las.fofn'
+    las_fofn = '../../1-preads_ovl/merge-gather/las.fofn'
     script = """\
 set -vex
 trap 'touch {job_done}.exit' EXIT
@@ -286,7 +288,7 @@ hostname
 date
 cd {wd}
 
-fc_ovlp_filter_with_phase.py --fofn ../../2-asm-falcon/las.fofn --max_diff 120 --max_cov 120 --min_cov 1 --n_core 12 --min_len 2500 --db ../../1-preads_ovl/preads.db --rid_phase_map {rid_to_phase_all} > preads.p_ovl
+fc_ovlp_filter_with_phase.py --fofn {las_fofn} --max_diff 120 --max_cov 120 --min_cov 1 --n_core 12 --min_len 2500 --db ../../1-preads_ovl/preads.db --rid_phase_map {rid_to_phase_all} > preads.p_ovl
 fc_phased_ovlp_to_graph.py preads.p_ovl --min_len 2500 > fc.log
 if [ -e ../../1-preads_ovl/preads4falcon.fasta ];
 then
@@ -335,7 +337,7 @@ def unzip_all(config):
 
     ctg_list_file = makePypeLocalFile("./3-unzip/reads/ctg_list")
     falcon_asm_done = makePypeLocalFile("./2-asm-falcon/falcon_asm_done")
-    wdir = os.path.abspath(".")
+    wdir = os.path.abspath('./3-unzip/reads')
     parameters = {"wd": wdir, "config": config}
 
     job_done = makePypeLocalFile( os.path.join( parameters["wd"], "track_reads_done" ) )
