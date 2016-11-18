@@ -1,15 +1,16 @@
 from falcon_kit import run_support as support
-from pypeflow.data import PypeLocalFile, makePypeLocalFile, fn
-from pypeflow.task import PypeTask, PypeThreadTaskBase, PypeTaskBase
-from pypeflow.controller import PypeWorkflow, PypeThreadWorkflow
-#from pypeflow.simple_pwatcher_bridge import (
-#        PypeLocalFile, makePypeLocalFile, fn,
-#        PypeTask,
-#        PypeProcWatcherWorkflow, MyFakePypeThreadTaskBase)
-#PypeThreadTaskBase = MyFakePypeThreadTaskBase
+#from pypeflow.data import PypeLocalFile, makePypeLocalFile, fn
+#from pypeflow.task import PypeTask, PypeThreadTaskBase, PypeTaskBase
+#from pypeflow.controller import PypeWorkflow, PypeThreadWorkflow
+from pypeflow.simple_pwatcher_bridge import (
+        PypeLocalFile, makePypeLocalFile, fn,
+        PypeTask,
+        PypeProcWatcherWorkflow, MyFakePypeThreadTaskBase)
+PypeThreadTaskBase = MyFakePypeThreadTaskBase
 from falcon_kit.FastaReader import FastaReader
 import glob
 import os
+import pprint
 import re
 import sys
 import time
@@ -112,37 +113,6 @@ def mkdir(d):
     if not os.path.isdir(d):
         os.makedirs(d)
 
-def wait_for_file(filename, task, job_name = ""):
-    """We could be in the thread or sub-process which spawned a qsub job,
-    so we must check for the shutdown_event.
-    """
-    while 1:
-        time.sleep(wait_time)
-        # We prefer all jobs to rely on `*done.exit`, but not all do yet. So we check that 1st.
-        exit_fn = filename + '.exit'
-        if os.path.exists(exit_fn):
-            fc_run_logger.info( "%r found." % (exit_fn) )
-            fc_run_logger.debug( " job: %r exited." % (job_name) )
-            os.unlink(exit_fn) # to allow a restart later, if not done
-            if not os.path.exists(filename):
-                fc_run_logger.warning( "%r is missing. job: %r failed!" % (filename, job_name) )
-            break
-        if os.path.exists(filename) and not os.path.exists(exit_fn):
-            # (rechecked exit_fn to avoid race condition)
-            fc_run_logger.info( "%r not found, but job is done." % (exit_fn) )
-            fc_run_logger.debug( " job: %r exited." % (job_name) )
-            break
-        if task.shutdown_event is not None and task.shutdown_event.is_set():
-            fc_run_logger.warning( "shutdown_event received (Keyboard Interrupt maybe?), %r not finished."
-                % (job_name) )
-            if support.job_type == "SGE":
-                fc_run_logger.info( "deleting the job by `qdel` now..." )
-                system("qdel %s" % job_name) # Failure is ok.
-            if support.job_type == "SLURM":
-                fc_run_logger.info( "Deleting the job by 'scancel' now...")
-                system("scancel -n %s" % job_name)
-            break
-
 def task_track_reads(self):
 
     job_done = fn(self.job_done)
@@ -156,24 +126,24 @@ def task_track_reads(self):
     script = []
     script.append( "set -vex" )
     script.append( "trap 'touch {job_done}.exit' EXIT".format(job_done = job_done) )
-    script.append( "cd %s" % wd )
+    script.append( "cd {wd}".format(wd = wd) )
     script.append( "hostname" )
     script.append( "date" )
-    script.append( "cd {wd}".format(wd = wd) )
-    script.append( "fc_get_read_hctg_map.py" )
-    script.append( "fc_rr_hctg_track.py" )
-    script.append( "mkdir -p 4-quiver/reads/" )
-    script.append( "fc_select_reads_from_bam.py {input_bam_fofn}".format( input_bam_fofn = input_bam_fofn) )
+    script.append( "fc_get_read_hctg_map.py --basedir ../.." )
+    script.append( "fc_rr_hctg_track.py --base_dir ../.." )
+    #script.append( "mkdir -p 4-quiver/reads/" )
+    script.append( "fc_select_reads_from_bam.py --basedir ../.. {input_bam_fofn}".format( input_bam_fofn = input_bam_fofn) )
     script.append( "date" )
     script.append( "touch {job_done}".format(job_done = job_done) )
 
     with open(script_fn,"w") as script_file:
         script_file.write("\n".join(script) + '\n')
+    self.generated_script_fn = script_fn
 
-    job_data = support.make_job_data(self.URL, script_fn)
-    job_data["sge_option"] = sge_track_reads
-    run_script(job_data, job_type = config["job_type"])
-    wait_for_file(job_done, task=self, job_name=job_data['job_name'])
+    #job_data = support.make_job_data(self.URL, script_fn)
+    #job_data["sge_option"] = sge_track_reads
+    #run_script(job_data, job_type = config["job_type"])
+    #wait_for_file(job_done, task=self, job_name=job_data['job_name'])
 
 
 def task_run_quiver(self):
@@ -225,11 +195,12 @@ def task_run_quiver(self):
 
     with open(script_fn,"w") as script_file:
         script_file.write("\n".join(script) + '\n')
+    self.generated_script_fn = script_fn
 
-    job_data = support.make_job_data(self.URL, script_fn)
-    job_data["sge_option"] = sge_quiver
-    run_script(job_data, job_type = job_type)
-    wait_for_file(job_done, task=self, job_name=job_data['job_name'])
+    #job_data = support.make_job_data(self.URL, script_fn)
+    #job_data["sge_option"] = sge_quiver
+    #run_script(job_data, job_type = job_type)
+    #wait_for_file(job_done, task=self, job_name=job_data['job_name'])
 
 
 def main(argv=sys.argv):
@@ -243,6 +214,7 @@ def main(argv=sys.argv):
         sys.exit(1)
 
     config_fn = sys.argv[1]
+    config_absbasedir = os.path.dirname(os.path.abspath(config_fn))
 
     config = ConfigParser.ConfigParser()
     config.read(config_fn)
@@ -267,6 +239,8 @@ def main(argv=sys.argv):
     input_bam_fofn = "input_bam.fofn"
     if config.has_option('Unzip', 'input_bam_fofn'):
         input_bam_fofn = config.get('Unzip', 'input_bam_fofn')
+    if not os.path.isabs(input_bam_fofn):
+        input_bam_fofn = os.path.join(config_absbasedir, input_bam_fofn)
 
 
     quiver_concurrent_jobs = 8
@@ -278,24 +252,28 @@ def main(argv=sys.argv):
               "sge_track_reads": sge_track_reads,
               "input_bam_fofn": input_bam_fofn,
               "smrt_bin": smrt_bin}
+    fc_run_logger.info('config={}'.format(pprint.pformat(config)))
 
     support.job_type = "SGE" #tmp hack until we have a configuration parser
 
     ctg_ids = []
 
 
-    PypeThreadWorkflow.setNumThreadAllowed(quiver_concurrent_jobs, quiver_concurrent_jobs)
-    wf = PypeThreadWorkflow()
+    PypeProcWatcherWorkflow.setNumThreadAllowed(quiver_concurrent_jobs, quiver_concurrent_jobs)
+    wf = PypeProcWatcherWorkflow()
+    wf.max_jobs = quiver_concurrent_jobs
 
-    parameters = {"wd": os.path.abspath("."), "config": config}
-    hasm_done = makePypeLocalFile("./3-unzip/1-hasm/hasm_done")
-    job_done = makePypeLocalFile( os.path.join( parameters["wd"], "track_reads_h_done" ) )
-    make_track_reads_task = PypeTask(inputs = {"hasm_done": hasm_done},
-                                     outputs = {"job_done": job_done},
+    abscwd = os.path.abspath('.')
+    parameters = {'wd': os.path.join(abscwd, '4-quiver', 'track_reads_h'), 'config': config}
+    hasm_done = makePypeLocalFile('./3-unzip/1-hasm/hasm_done')
+    job_done = makePypeLocalFile( os.path.join( parameters['wd'], 'track_reads_h_done' ) )
+    make_track_reads_task = PypeTask(inputs = {'hasm_done': hasm_done},
+                                     outputs = {'job_done': job_done},
                                      parameters = parameters,
                                      TaskType = PypeThreadTaskBase,
-                                     URL = "task://localhost/track_reads_h" )
+                                     URL = 'task://localhost/track_reads_h' )
     track_reads_task = make_track_reads_task(task_track_reads)
+    #sge_track_reads = config["sge_track_reads"]
 
     wf.addTask(track_reads_task)
     wf.refreshTargets() #force refresh now, will put proper dependence later
@@ -346,11 +324,11 @@ def main(argv=sys.argv):
                                        URL = "task://localhost/q_{ctg_id}".format( ctg_id = ctg_id ) )
             quiver_task = make_quiver_task(task_run_quiver)
             wf.addTask( quiver_task )
-
+    #sge_quiver = config["sge_quiver"]
 
 
     wf.refreshTargets()
-    os.system("sleep 30")
+    #os.system("sleep 30")
 
     mkdir( "./4-quiver/cns_output" )
     os.system("rm ./4-quiver/cns_output/cns_p_ctg.fasta")

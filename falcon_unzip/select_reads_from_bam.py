@@ -1,21 +1,24 @@
 import pysam
-import sys
+
+import argparse
 import glob
 import os
+import sys
 
-def main(args):
+def select_reads_from_bam(input_bam_fofn_fn, asm_dir, hasm_dir, quiver_dir):
     read_partition = {}
     read_to_ctgs = {}
 
-    fn = "./3-unzip/read_maps/rawread_to_contigs"
-    rid_to_oid = open("2-asm-falcon/read_maps/raw_read_ids").read().split("\n")
-    with open(fn) as f:
+    rawread_to_contigs_fn = os.path.join(quiver_dir, 'read_maps', 'rawread_to_contigs')
+    raw_read_ids_fn = os.path.join(asm_dir, 'read_maps', 'raw_read_ids')
+    rid_to_oid = open(raw_read_ids_fn).read().split('\n')
+    with open(rawread_to_contigs_fn) as f:
         for row in f:
             row = row.strip().split()
             if int(row[3]) >= 1: #keep top one hits
                 continue
             ctg_id = row[1]
-            if ctg_id == "NA":
+            if ctg_id == 'NA':
                 continue
             read_partition.setdefault( ctg_id, set() )
             r_id = row[0]
@@ -25,20 +28,26 @@ def main(args):
             read_to_ctgs[ o_id ].append( (int(row[4]) ,ctg_id) )
 
     header = None
-    for row in open(sys.argv[1]):
-        fn = row.strip()
-        samfile = pysam.AlignmentFile(fn, "rb", check_sq = False )
+    fofn_basedir = os.path.normpath(os.path.dirname(input_bam_fofn_fn))
+    def abs_fn(maybe_rel_fn):
+        if os.path.isabs(maybe_rel_fn):
+            return maybe_rel_fn
+        else:
+            return os.path.join(fofn_basedir, maybe_rel_fn)
+    for row in open(input_bam_fofn_fn):
+        fn = abs_fn(row.strip())
+        samfile = pysam.AlignmentFile(fn, 'rb', check_sq = False )
         if header == None:
             header = samfile.header
         else:
-            header["RG"].extend( samfile.header["RG"] )
+            header['RG'].extend( samfile.header['RG'] )
         samfile.close()
 
-    PG = header.pop("PG") #remove PG line as there might be a bug that generates no readable chrs
+    PG = header.pop('PG') #remove PG line as there might be a bug that generates no readable chrs
     #print PG
 
-    base_dir = os.getcwd()
-    #outfile = pysam.AlignmentFile( os.path.join(base_dir, "header.sam" ), "wh", header=header )
+    #base_dir = os.getcwd()
+    #outfile = pysam.AlignmentFile( os.path.join(base_dir, 'header.sam' ), 'wh', header=header )
     #outfile.close()
 
     ctgs = read_partition.keys()
@@ -46,15 +55,15 @@ def main(args):
     selected_ctgs = set()
     for ctg in ctgs:
         picked_reads = read_partition[ ctg ]
-        print ctg, len(picked_reads)
+        print ctg, len(picked_reads) # TODO: Is this for debugging?
         if len(picked_reads) > 20:
             selected_ctgs.add(ctg)
 
     outfile = {}
 
-    for row in open(sys.argv[1]):
-        fn = row.strip()
-        samfile = pysam.AlignmentFile(fn, "rb", check_sq = False )
+    for row in open(input_bam_fofn_fn):
+        fn = abs_fn(row.strip())
+        samfile = pysam.AlignmentFile(fn, 'rb', check_sq = False )
         for r in samfile.fetch( until_eof = True ):
             if r.query_name not in read_to_ctgs:
                 continue
@@ -64,9 +73,31 @@ def main(args):
             if ctg not in selected_ctgs:
                 continue
             if ctg not in outfile:
-                outfile[ctg] = pysam.AlignmentFile( os.path.join(base_dir, "4-quiver/reads/", "%s.sam" % ctg), "wh", header=header )
+                samfile_fn = os.path.join(quiver_dir, 'reads', '%s.sam' % ctg)
+                print >>sys.stderr, 'samfile_fn:{!r}'.format(samfile_fn)
+                outfile[ctg] = pysam.AlignmentFile(samfile_fn, 'wh', header=header )
             outfile[ctg].write(r)
         samfile.close()
 
     for ctg in outfile:
         outfile[ctg].close()
+
+def parse_args(argv):
+    parser = argparse.ArgumentParser(description='TBD',
+              formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument('--basedir', type=str, default='./', help='the base working dir of a FALCON assembly')
+    parser.add_argument('input_bam_fofn', type=str, help='File of BAM filenames. Paths are relative to dir of FOFN, not CWD.')
+    args = parser.parse_args(argv[1:])
+    return args
+
+def main(argv=sys.argv):
+    args = parse_args(argv)
+    basedir = args.basedir
+    input_bam_fofn = args.input_bam_fofn
+    #rawread_dir = os.path.abspath( os.path.join( basedir, '0-rawreads' ) )
+    #pread_dir = os.path.abspath( os.path.join( basedir, '1-preads_ovl' ) )
+    asm_dir = os.path.abspath(os.path.join( basedir, '2-asm-falcon'))
+    hasm_dir = os.path.abspath(os.path.join( basedir, '3-unzip'))
+    quiver_dir = os.path.abspath(os.path.join( basedir, '4-quiver'))
+
+    select_reads_from_bam(input_bam_fofn, asm_dir=asm_dir, hasm_dir=hasm_dir, quiver_dir=quiver_dir)
