@@ -26,6 +26,8 @@ def select_reads_from_bam(input_bam_fofn_fn, asm_dir, hasm_dir, quiver_dir):
             read_partition[ ctg_id ].add( o_id )
             read_to_ctgs.setdefault( o_id, [] )
             read_to_ctgs[ o_id ].append( (int(row[4]) ,ctg_id) )
+    print "num read_partitions:", len(read_partition)
+    print "num read_to_ctgs:", len(read_to_ctgs)
 
     header = None
     fofn_basedir = os.path.normpath(os.path.dirname(input_bam_fofn_fn))
@@ -55,22 +57,26 @@ def select_reads_from_bam(input_bam_fofn_fn, asm_dir, hasm_dir, quiver_dir):
     selected_ctgs = set()
     for ctg in ctgs:
         picked_reads = read_partition[ ctg ]
-        print ctg, len(picked_reads) # TODO: Is this for debugging?
+        print "ctg, len:", ctg, len(picked_reads) # TODO: Is this for debugging?
         if len(picked_reads) > 20:
             selected_ctgs.add(ctg)
 
     outfile = {}
 
+    sam_dir = os.path.join(quiver_dir, 'reads')
+    mkdir(sam_dir)
     for row in open(input_bam_fofn_fn):
         fn = abs_fn(row.strip())
         samfile = pysam.AlignmentFile(fn, 'rb', check_sq = False )
         for r in samfile.fetch( until_eof = True ):
             if r.query_name not in read_to_ctgs:
+                #print "Missing:", r.query_name
                 continue
             ctg_list = read_to_ctgs[ r.query_name ]
             ctg_list.sort()
             score, ctg = ctg_list[0]
             if ctg not in selected_ctgs:
+                #print "Not selected:", ctg
                 continue
             if ctg not in outfile:
                 samfile_fn = os.path.join(quiver_dir, 'reads', '%s.sam' % ctg)
@@ -81,6 +87,10 @@ def select_reads_from_bam(input_bam_fofn_fn, asm_dir, hasm_dir, quiver_dir):
 
     for ctg in outfile:
         outfile[ctg].close()
+
+def mkdir(d):
+    if not os.path.isdir(d):
+        os.makedirs(d)
 
 def parse_args(argv):
     parser = argparse.ArgumentParser(description='TBD',
