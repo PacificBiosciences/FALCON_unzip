@@ -23,7 +23,7 @@ LOG = logging.getLogger(__name__)
 def system(call, check=False):
     LOG.debug('$(%s)' %repr(call))
     rc = os.system(call)
-    msg = "Call %r returned %d." % (call, rc)
+    msg = 'Call %r returned %d.' % (call, rc)
     if rc:
         LOG.warning(msg)
         if check:
@@ -37,30 +37,30 @@ def mkdir(d):
         os.makedirs(d)
 
 def task_track_reads(self):
-
     job_done = fn(self.job_done)
-    wd = self.parameters["wd"]
-    config = self.parameters["config"]
-    input_bam_fofn = config["input_bam_fofn"]
-    sge_track_reads = config["sge_track_reads"]
-    script_dir = os.path.join( wd )
-    script_fn =  os.path.join( script_dir , "track_reads_h.sh")
+    wd = self.parameters['wd']
+    config = self.parameters['config']
+    input_bam_fofn = config['input_bam_fofn']
+    sge_track_reads = config['sge_track_reads']
+    script_dir = os.path.join(wd)
+    script_fn = os.path.join(script_dir, 'track_reads_h.sh')
 
-    script = []
-    script.append( "set -vex" )
-    script.append( "trap 'touch {job_done}.exit' EXIT".format(job_done = job_done) )
-    script.append( "cd {wd}".format(wd = wd) )
-    script.append( "hostname" )
-    script.append( "date" )
-    script.append( "fc_get_read_hctg_map.py --basedir ../.." )
-    script.append( "fc_rr_hctg_track.py --base_dir ../.." )
-    #script.append( "mkdir -p 4-quiver/reads/" )
-    script.append( "fc_select_reads_from_bam.py --basedir ../.. {input_bam_fofn}".format( input_bam_fofn = input_bam_fofn) )
-    script.append( "date" )
-    script.append( "touch {job_done}".format(job_done = job_done) )
+    script = """\
+set -vex
+trap 'touch {job_done}.exit' EXIT
+cd {wd}
+hostname
+date
+fc_get_read_hctg_map.py --basedir ../..
+fc_rr_hctg_track.py --base_dir ../..
+mkdir -p 4-quiver/reads/
+fc_select_reads_from_bam.py --basedir ../.. {input_bam_fofn}
+date
+touch {job_done}
+""".format(**locals())
 
-    with open(script_fn,"w") as script_file:
-        script_file.write("\n".join(script) + '\n')
+    with open(script_fn,'w') as script_file:
+        script_file.write(script)
     self.generated_script_fn = script_fn
     #job_data["sge_option"] = sge_track_reads
 
@@ -74,46 +74,44 @@ def task_run_quiver(self):
     cns_fastq = fn(self.cns_fastq)
     job_done = fn(self.job_done)
 
-    job_uid = self.parameters["job_uid"]
-    wd = self.parameters["wd"]
-    config = self.parameters["config"]
-    ctg_id = self.parameters["ctg_id"]
+    job_uid = self.parameters['job_uid']
+    wd = self.parameters['wd']
+    config = self.parameters['config']
+    ctg_id = self.parameters['ctg_id']
 
-    smrt_bin = config["smrt_bin"]
-    sge_quiver = config["sge_quiver"]
-    job_type = config["job_type"]
-    samtools = os.path.join( smrt_bin, "samtools")
-    pbalign = os.path.join( smrt_bin, "pbalign")
-    makePbi = os.path.join( smrt_bin, "makePbi")
-    variantCaller = os.path.join( smrt_bin, "variantCaller")
+    smrt_bin = config['smrt_bin']
+    sge_quiver = config['sge_quiver']
+    job_type = config['job_type']
+    samtools = os.path.join( smrt_bin, 'samtools')
+    pbalign = os.path.join( smrt_bin, 'pbalign')
+    makePbi = os.path.join( smrt_bin, 'makePbi')
+    variantCaller = os.path.join( smrt_bin, 'variantCaller')
 
     script_dir = os.path.join( wd )
-    script_fn =  os.path.join( script_dir , "cns_%s.sh" % (ctg_id))
+    script_fn =  os.path.join( script_dir , 'cns_%s.sh' % (ctg_id))
 
-    script = []
-    script.append( "set -vex" )
-    script.append( "trap 'touch {job_done}.exit' EXIT".format(job_done = job_done) )
-    script.append( "cd %s" % wd )
-    script.append( "hostname" )
-    script.append( "date" )
-    script.append( "cd {wd}".format(wd = wd) )
+    script = """\
+set -vex
+trap 'touch {job_done}.exit' EXIT
+hostname
+date
+cd {wd}
 
-    script.append( "{samtools} faidx {ref_fasta}".format( samtools=samtools, ref_fasta=ref_fasta ) )
-    script.append( "{samtools} view -b -S {read_sam} > {ctg_id}.bam".format( samtools=samtools, read_sam = read_sam, ctg_id = ctg_id ) )
-    script.append( "{pbalign} --tmpDir=/localdisk/scratch/ --nproc=24 --minAccuracy=0.75 --minLength=50\
-            --minAnchorSize=12 --maxDivergence=30 --concordant --algorithm=blasr\
-            --algorithmOptions=-useQuality --maxHits=1 --hitPolicy=random --seed=1\
-            {ctg_id}.bam {ref_fasta} aln-{ctg_id}.bam".format( pbalign=pbalign , ctg_id = ctg_id, ref_fasta = ref_fasta))
-    script.append( "#{makePbi} --referenceFasta {ref_fasta} aln-{ctg_id}.bam".format(makePbi = makePbi, ref_fasta = ref_fasta, ctg_id = ctg_id) )
-    script.append( "({variantCaller} -x 5 -X 120 -q 20 -j 24 -r {ref_fasta} aln-{ctg_id}.bam\
-            -o {cns_fasta} -o {cns_fastq}) || echo quvier failed".format( variantCaller = variantCaller, ctg_id = ctg_id, ref_fasta = ref_fasta,
-                                                   cns_fasta=cns_fasta, cns_fastq=cns_fastq ))
+{samtools} faidx {ref_fasta}
+{samtools} view -b -S {read_sam} > {ctg_id}.bam
+{pbalign} --tmpDir=/localdisk/scratch/ --nproc=24 --minAccuracy=0.75 --minLength=50\
+          --minAnchorSize=12 --maxDivergence=30 --concordant --algorithm=blasr\
+          --algorithmOptions=-useQuality --maxHits=1 --hitPolicy=random --seed=1\
+            {ctg_id}.bam {ref_fasta} aln-{ctg_id}.bam
+#{makePbi} --referenceFasta {ref_fasta} aln-{ctg_id}.bam
+({variantCaller} -x 5 -X 120 -q 20 -j 24 -r {ref_fasta} aln-{ctg_id}.bam\
+            -o {cns_fasta} -o {cns_fastq}) || echo quvier failed
+date
+touch {job_done}
+""".format(**locals())
 
-    script.append( "date" )
-    script.append( "touch {job_done}".format(job_done = job_done) )
-
-    with open(script_fn,"w") as script_file:
-        script_file.write("\n".join(script) + '\n')
+    with open(script_fn,'w') as script_file:
+        script_file.write(script)
     self.generated_script_fn = script_fn
     #job_data["sge_option"] = sge_quiver
 

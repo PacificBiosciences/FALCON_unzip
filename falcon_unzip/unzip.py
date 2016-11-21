@@ -41,24 +41,26 @@ def task_track_reads(self):
     sge_track_reads = config["sge_track_reads"]
     script_dir = os.path.join( wd )
     script_fn =  os.path.join( script_dir , "track_reads.sh")
+    topdir = '../..'
 
-    script = []
-    script.append( "set -vex" )
-    script.append( "trap 'touch {job_done}.exit' EXIT".format(job_done = job_done) )
-    script.append( "hostname" )
-    script.append( "date" )
-    script.append( "cd {topdir}".format(topdir = '../..') )
-    script.append( "python -m falcon_kit.mains.get_read_ctg_map" )
-    script.append( "python -m falcon_kit.mains.rr_ctg_track" )
-    script.append( "python -m falcon_kit.mains.pr_ctg_track" )
-    #script.append( "mkdir -p 3-unzip/reads/" )
-    script.append( "python -m falcon_kit.mains.fetch_reads" )
-    script.append( "cd %s" % wd )
-    script.append( "date" )
-    script.append( "touch {job_done}".format(job_done = job_done) )
+    script = """\
+set -vex
+trap 'touch {job_done}.exit' EXIT
+hostname
+date
+cd {topdir}
+python -m falcon_kit.mains.get_read_ctg_map
+python -m falcon_kit.mains.rr_ctg_track
+python -m falcon_kit.mains.pr_ctg_track
+#mkdir -p 3-unzip/reads/
+python -m falcon_kit.mains.fetch_reads
+cd {wd}
+date
+touch {job_done}
+""".format(**locals())
 
     with open(script_fn,"w") as script_file:
-        script_file.write("\n".join(script) + '\n')
+        script_file.write(script)
     self.generated_script_fn = script_fn
     #job_data["sge_option"] = sge_track_reads
 
@@ -83,27 +85,25 @@ def task_run_blasr(self):
     script_dir = os.path.join( wd )
     script_fn =  os.path.join( script_dir , "aln_{ctg_id}.sh".format(ctg_id = ctg_id))
 
-    script = []
-    script.append( "set -vex" )
-    script.append( "trap 'touch {job_done}.exit' EXIT".format(job_done = job_done) )
-    script.append( "cd %s" % wd )
-    script.append( "hostname" )
-    script.append( "date" )
-    script.append( "cd {wd}".format(wd = wd) )
-    script.append( "time {blasr} {read_fasta} {ref_fasta} -noSplitSubreads -clipping subread\
+    script = """\
+set -vex
+trap 'touch {job_done}.exit' EXIT
+cd {wd}
+hostname
+date
+cd {wd}
+time {blasr} {read_fasta} {ref_fasta} -noSplitSubreads -clipping subread\
  -hitPolicy randombest -randomSeed 42 -bestn 1 -minPctIdentity 70.0\
- -minMatch 12  -nproc 24 -sam -out tmp_aln.sam".format(blasr = blasr,
-                                                       read_fasta = read_fasta,
-                                                       ref_fasta = ref_fasta) )
-
-    script.append( "{samtools} view -bS tmp_aln.sam | {samtools} sort - {ctg_id}_sorted".format( samtools = samtools, ctg_id = ctg_id) )
-    script.append( "{samtools} index {ctg_id}_sorted.bam".format( samtools = samtools, ctg_id = ctg_id) )
-    script.append( "rm tmp_aln.sam" )
-    script.append( "date" )
-    script.append( "touch {job_done}".format(job_done = job_done) )
+ -minMatch 12  -nproc 24 -sam -out tmp_aln.sam
+{samtools} view -bS tmp_aln.sam | {samtools} sort - {ctg_id}_sorted
+{samtools} index {ctg_id}_sorted.bam
+rm tmp_aln.sam
+date
+touch {job_done}
+""".format(**locals())
 
     with open(script_fn,"w") as script_file:
-        script_file.write("\n".join(script) + '\n')
+        script_file.write(script)
     self.generated_script_fn = script_fn
     #job_data["sge_option"] = sge_blasr_aln
 
@@ -125,23 +125,21 @@ def task_phasing(self):
     script_dir = os.path.join( wd )
     script_fn =  os.path.join( script_dir , "p_%s.sh" % (ctg_id))
 
-    script = []
-
-    script.append( "set -vex" )
-    script.append( "trap 'touch {job_done}.exit' EXIT".format(job_done = job_done) )
-    script.append( "cd %s" % wd )
-    script.append( "hostname" )
-    script.append( "date" )
-    script.append( "cd {wd}".format(wd = wd) )
-    script.append( "fc_phasing.py --bam {aln_bam} --fasta {ref_fasta} --ctg_id {ctg_id} --base_dir ../".format( aln_bam = aln_bam,
-                                                                                                                ref_fasta = ref_fasta,
-                                                                                                                ctg_id = ctg_id ))
-    script.append( "fc_phasing_readmap.py --ctg_id {ctg_id} --read_map_dir ../../../2-asm-falcon/read_maps --phased_reads phased_reads".format(ctg_id = ctg_id) )
-    script.append( "date" )
-    script.append( "touch {job_done}".format(job_done = job_done) )
+    script = """\
+set -vex
+trap 'touch {job_done}.exit' EXIT
+cd {wd}
+hostname
+date
+cd {wd}
+fc_phasing.py --bam {aln_bam} --fasta {ref_fasta} --ctg_id {ctg_id} --base_dir ../
+fc_phasing_readmap.py --ctg_id {ctg_id} --read_map_dir ../../../2-asm-falcon/read_maps --phased_reads phased_reads
+date
+touch {job_done}
+""".format(**locals())
 
     with open(script_fn,"w") as script_file:
-        script_file.write("\n".join(script) + '\n')
+        script_file.write(script)
     self.generated_script_fn = script_fn
     #job_data["sge_option"] = sge_phasing
 
@@ -177,9 +175,9 @@ else
   ln -sf ../../1-preads_ovl/db2falcon/preads4falcon.fasta .
 fi
 fc_graphs_to_h_tigs.py --fc_asm_path ../../2-asm-falcon/ --fc_hasm_path ./ --ctg_id all --rid_phase_map {rid_to_phase_all} --fasta preads4falcon.fasta
-""".format(**locals())
-    more_script = \
-"""
+
+# more script -- a little bit hacky here, we should improve
+
 WD=$PWD
 for f in `cat ../reads/ctg_list `; do mkdir -p $WD/$f; cd $WD/$f; fc_dedup_h_tigs.py $f; done
 
@@ -199,9 +197,8 @@ find 1-hasm -name "p_ctg.*.fa" | sort | xargs cat >> all_p_ctg.fa
 find 1-hasm -name "h_ctg.*.fa" | sort | xargs cat >> all_h_ctg.fa
 cd ../
 date
-"""
-    script += more_script # a little bit hacky here, we should improve
-    script += "touch {job_done}\n".format(job_done = job_done)
+touch {job_done}
+""".format(**locals())
 
     with open(script_fn,"w") as script_file:
         script_file.write(script)
