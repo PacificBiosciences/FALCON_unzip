@@ -37,78 +37,6 @@ def system(call, check=False):
         fc_run_logger.debug(msg)
     return rc
 
-def _qsub_script(job_data, specific):
-        script_fn = job_data["script_fn"]
-        job_name = job_data["job_name"]
-        cwd = job_data["cwd"]
-        sge_option = job_data["sge_option"]
-        sge_cmd="qsub -N {job_name} {sge_option} -o {cwd}/sge_log {specific}\
-                 -S /bin/bash {script}".format(job_name=job_name,
-                                               cwd=os.getcwd(),
-                                               specific=specific,
-                                               sge_option=sge_option,
-                                               script=script_fn)
-        system(sge_cmd, check=True)
-        system("sleep 1")
-
-def _run_script_sge(job_data):
-    specific = '-j y'
-    _qsub_script(job_data, specific)
-
-def _run_script_torque(job_data):
-    # See https://github.com/PacificBiosciences/FALCON/pull/227
-    specific = '-j oe'
-    _qsub_script(job_data, specific)
-
-def _run_script_slurm(job_data):
-        script_fn = job_data["script_fn"]
-        job_name = job_data["job_name"]
-        cwd = job_data["cwd"]
-        sge_option = job_data["sge_option"]
-        with open(script_fn, 'r') as original: data = original.read()
-        with open(script_fn, 'w') as modified: modified.write("#!/bin/sh" + "\n" + data)
-        sge_cmd="sbatch -J {job_name} {sge_option} {script}".format(job_name=job_name, cwd=os.getcwd(),sge_option=sge_option, script=script_fn)
-        system(sge_cmd, check=True)
-
-def _run_script_local(job_data):
-        script_fn = job_data["script_fn"]
-        job_name = job_data["job_name"]
-        log_fn = '{0}.log'.format(script_fn)
-        cmd = "bash {0} 1> {1} 2>&1".format(script_fn, log_fn)
-        try:
-            system(cmd, check=True)
-        except Exception:
-            out = open(log_fn).read()
-            fc_run_logger.exception('Contents of %r:\n%s' %(log_fn, out))
-            raise
-
-_run_scripts = {
-        'SGE': _run_script_sge,
-        'TORQUE': _run_script_torque,
-        'SLURM': _run_script_slurm,
-        'LOCAL': _run_script_local,
-}
-
-def run_script(job_data, job_type = "SGE" ):
-    """For now, we actually modify the script before running it.
-    This assume a simple bash script.
-    We will have a better solution eventually.
-    """
-    try:
-        _run_script = _run_scripts[job_type.upper()]
-    except LookupError as e:
-        msg = 'Unknown job_type=%s' %repr(job_type)
-        fc_run_logger.exception(msg)
-        raise
-    job_name = job_data["job_name"]
-    script_fn = job_data["script_fn"]
-    support.update_env_in_script(script_fn,
-        ['PATH', 'PYTHONPATH', 'LD_LIBRARY_PATH'])
-    fc_run_logger.info('(%s) %r' %(job_type, script_fn))
-    fc_run_logger.debug('%s (job %r)' %(_run_script.__name__, job_name))
-    rc = _run_script(job_data)
-    # Someday, we might trap exceptions here, as a failure would be caught later anyway.
-
 def mkdir(d):
     if not os.path.isdir(d):
         os.makedirs(d)
@@ -139,11 +67,7 @@ def task_track_reads(self):
     with open(script_fn,"w") as script_file:
         script_file.write("\n".join(script) + '\n')
     self.generated_script_fn = script_fn
-
-    #job_data = support.make_job_data(self.URL, script_fn)
     #job_data["sge_option"] = sge_track_reads
-    #run_script(job_data, job_type = config["job_type"])
-    #wait_for_file(job_done, task=self, job_name=job_data['job_name'])
 
 
 def task_run_quiver(self):
@@ -196,11 +120,7 @@ def task_run_quiver(self):
     with open(script_fn,"w") as script_file:
         script_file.write("\n".join(script) + '\n')
     self.generated_script_fn = script_fn
-
-    #job_data = support.make_job_data(self.URL, script_fn)
     #job_data["sge_option"] = sge_quiver
-    #run_script(job_data, job_type = job_type)
-    #wait_for_file(job_done, task=self, job_name=job_data['job_name'])
 
 
 def main(argv=sys.argv):

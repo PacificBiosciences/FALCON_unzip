@@ -18,11 +18,6 @@ import ConfigParser
 global fc_run_logger
 fc_run_logger = support.setup_logger(None)
 
-#support.job_type = "SGE" #tmp hack until we have a configuration parser
-
-wait_time = 5
-#fc_run_logger = None
-
 def system(call, check=False):
     fc_run_logger.debug('$(%s)' %repr(call))
     rc = os.system(call)
@@ -35,111 +30,9 @@ def system(call, check=False):
         fc_run_logger.debug(msg)
     return rc
 
-def _qsub_script(job_data, specific):
-        script_fn = job_data["script_fn"]
-        job_name = job_data["job_name"]
-        cwd = job_data["cwd"]
-        sge_option = job_data["sge_option"]
-        sge_cmd="qsub -N {job_name} {sge_option} -o {cwd}/sge_log {specific}\
-                 -S /bin/bash {script}".format(job_name=job_name,
-                                               cwd=os.getcwd(),
-                                               specific=specific,
-                                               sge_option=sge_option,
-                                               script=script_fn)
-        system(sge_cmd, check=True)
-
-def _run_script_sge(job_data):
-    specific = '-j y'
-    _qsub_script(job_data, specific)
-
-def _run_script_torque(job_data):
-    # See https://github.com/PacificBiosciences/FALCON/pull/227
-    specific = '-j oe'
-    _qsub_script(job_data, specific)
-
-def _run_script_slurm(job_data):
-        script_fn = job_data["script_fn"]
-        job_name = job_data["job_name"]
-        cwd = job_data["cwd"]
-        sge_option = job_data["sge_option"]
-        with open(script_fn, 'r') as original: data = original.read()
-        with open(script_fn, 'w') as modified: modified.write("#!/bin/sh" + "\n" + data)
-        sge_cmd="sbatch -J {job_name} {sge_option} {script}".format(job_name=job_name, cwd=os.getcwd(),sge_option=sge_option, script=script_fn)
-        system(sge_cmd, check=True)
-
-def _run_script_local(job_data):
-        script_fn = job_data["script_fn"]
-        job_name = job_data["job_name"]
-        log_fn = '{0}.log'.format(script_fn)
-        cmd = "bash {0} 1> {1} 2>&1".format(script_fn, log_fn)
-        try:
-            system(cmd, check=True)
-        except Exception:
-            out = open(log_fn).read()
-            fc_run_logger.exception('Contents of %r:\n%s' %(log_fn, out))
-            raise
-
-_run_scripts = {
-        'SGE': _run_script_sge,
-        'TORQUE': _run_script_torque,
-        'SLURM': _run_script_slurm,
-        'LOCAL': _run_script_local,
-}
-
-def run_script(job_data, job_type = "SGE" ):
-    """For now, we actually modify the script before running it.
-    This assume a simple bash script.
-    We will have a better solution eventually.
-    """
-    try:
-        _run_script = _run_scripts[job_type.upper()]
-    except LookupError as e:
-        msg = 'Unknown job_type=%s' %repr(job_type)
-        fc_run_logger.exception(msg)
-        raise
-    job_name = job_data["job_name"]
-    script_fn = job_data["script_fn"]
-    support.update_env_in_script(script_fn,
-        ['PATH', 'PYTHONPATH', 'LD_LIBRARY_PATH'])
-    fc_run_logger.info('(%s) %r' %(job_type, script_fn))
-    fc_run_logger.debug('%s (job %r)' %(_run_script.__name__, job_name))
-    rc = _run_script(job_data)
-    # Someday, we might trap exceptions here, as a failure would be caught later anyway.
-
 def mkdir(d):
     if not os.path.isdir(d):
         os.makedirs(d)
-
-def wait_for_file(filename, task, job_name = ""):
-    """We could be in the thread or sub-process which spawned a qsub job,
-    so we must check for the shutdown_event.
-    """
-    while 1:
-        time.sleep(wait_time)
-        # We prefer all jobs to rely on `*done.exit`, but not all do yet. So we check that 1st.
-        exit_fn = filename + '.exit'
-        if os.path.exists(exit_fn):
-            fc_run_logger.info( "%r found." % (exit_fn) )
-            fc_run_logger.debug( " job: %r exited." % (job_name) )
-            os.unlink(exit_fn) # to allow a restart later, if not done
-            if not os.path.exists(filename):
-                fc_run_logger.warning( "%r is missing. job: %r failed!" % (filename, job_name) )
-            break
-        if os.path.exists(filename) and not os.path.exists(exit_fn):
-            # (rechecked exit_fn to avoid race condition)
-            fc_run_logger.info( "%r not found, but job is done." % (exit_fn) )
-            fc_run_logger.debug( " job: %r exited." % (job_name) )
-            break
-        if task.shutdown_event is not None and task.shutdown_event.is_set():
-            fc_run_logger.warning( "shutdown_event received (Keyboard Interrupt maybe?), %r not finished."
-                % (job_name) )
-            if support.job_type == "SGE":
-                fc_run_logger.info( "deleting the job by `qdel` now..." )
-                system("qdel %s" % job_name) # Failure is ok.
-            if support.job_type == "SLURM":
-                fc_run_logger.info( "Deleting the job by 'scancel' now...")
-                system("scancel -n %s" % job_name)
-            break
 
 def task_track_reads(self):
 
@@ -168,15 +61,10 @@ def task_track_reads(self):
     with open(script_fn,"w") as script_file:
         script_file.write("\n".join(script) + '\n')
     self.generated_script_fn = script_fn
-
-    #job_data = support.make_job_data(self.URL, script_fn)
     #job_data["sge_option"] = sge_track_reads
-    #run_script(job_data, job_type = config["job_type"])
-    #wait_for_file(job_done, task=self, job_name=job_data['job_name'])
 
 
 def task_run_blasr(self):
-
     job_done = fn(self.job_done)
     ref_fasta = fn(self.ref_fasta)
     read_fasta = fn(self.read_fasta)
@@ -218,14 +106,10 @@ def task_run_blasr(self):
     with open(script_fn,"w") as script_file:
         script_file.write("\n".join(script) + '\n')
     self.generated_script_fn = script_fn
-
-    #job_data = support.make_job_data(self.URL, script_fn)
     #job_data["sge_option"] = sge_blasr_aln
-    #run_script(job_data, job_type = config["job_type"])
-    #wait_for_file(job_done, task=self, job_name=job_data['job_name'])
+
 
 def task_phasing(self):
-
     ref_fasta = fn(self.ref_fasta)
     aln_bam = fn(self.aln_bam)
 
@@ -260,11 +144,8 @@ def task_phasing(self):
     with open(script_fn,"w") as script_file:
         script_file.write("\n".join(script) + '\n')
     self.generated_script_fn = script_fn
-
-    #job_data = support.make_job_data(self.URL, script_fn)
     #job_data["sge_option"] = sge_phasing
-    #run_script(job_data, job_type = job_type)
-    #wait_for_file(job_done, task=self, job_name=job_data['job_name'])
+
 
 def task_hasm(self):
     rid_to_phase_all = fn(self.rid_to_phase_all)
@@ -326,7 +207,6 @@ date
     with open(script_fn,"w") as script_file:
         script_file.write(script)
     self.generated_script_fn = script_fn
-
     #job_data["sge_option"] = sge_hasm
 
 def unzip_all(config):
