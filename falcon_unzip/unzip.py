@@ -21,7 +21,7 @@ LOG = logging.getLogger(__name__)
 def system(call, check=False):
     LOG.debug('$(%s)' %repr(call))
     rc = os.system(call)
-    msg = "Call %r returned %d." % (call, rc)
+    msg = 'Call %r returned %d.' % (call, rc)
     if rc:
         LOG.warning(msg)
         if check:
@@ -36,11 +36,11 @@ def mkdir(d):
 
 def task_track_reads(self):
     job_done = fn(self.job_done)
-    wd = self.parameters["wd"]
-    config = self.parameters["config"]
-    sge_track_reads = config["sge_track_reads"]
+    wd = self.parameters['wd']
+    config = self.parameters['config']
+    sge_track_reads = config['sge_track_reads']
     script_dir = os.path.join( wd )
-    script_fn =  os.path.join( script_dir , "track_reads.sh")
+    script_fn =  os.path.join( script_dir , 'track_reads.sh')
     topdir = '../..'
 
     script = """\
@@ -59,10 +59,10 @@ date
 touch {job_done}
 """.format(**locals())
 
-    with open(script_fn,"w") as script_file:
+    with open(script_fn,'w') as script_file:
         script_file.write(script)
     self.generated_script_fn = script_fn
-    #job_data["sge_option"] = sge_track_reads
+    #job_data['sge_option'] = sge_track_reads
 
 
 def task_run_blasr(self):
@@ -70,20 +70,20 @@ def task_run_blasr(self):
     ref_fasta = fn(self.ref_fasta)
     read_fasta = fn(self.read_fasta)
 
-    job_uid = self.parameters["job_uid"]
-    wd = self.parameters["wd"]
-    ctg_id = self.parameters["ctg_id"]
+    job_uid = self.parameters['job_uid']
+    wd = self.parameters['wd']
+    ctg_id = self.parameters['ctg_id']
 
-    config = self.parameters["config"]
-    smrt_bin = config["smrt_bin"]
-    sge_blasr_aln = config["sge_blasr_aln"]
-    job_type = config["job_type"]
-    blasr = os.path.join(smrt_bin, "blasr")
-    samtools = os.path.join( smrt_bin, "samtools")
+    config = self.parameters['config']
+    smrt_bin = config['smrt_bin']
+    sge_blasr_aln = config['sge_blasr_aln']
+    job_type = config['job_type']
+    blasr = os.path.join(smrt_bin, 'blasr')
+    samtools = os.path.join( smrt_bin, 'samtools')
 
 
     script_dir = os.path.join( wd )
-    script_fn =  os.path.join( script_dir , "aln_{ctg_id}.sh".format(ctg_id = ctg_id))
+    script_fn =  os.path.join( script_dir , 'aln_{ctg_id}.sh'.format(ctg_id = ctg_id))
 
     script = """\
 set -vex
@@ -102,10 +102,10 @@ date
 touch {job_done}
 """.format(**locals())
 
-    with open(script_fn,"w") as script_file:
+    with open(script_fn,'w') as script_file:
         script_file.write(script)
     self.generated_script_fn = script_fn
-    #job_data["sge_option"] = sge_blasr_aln
+    #job_data['sge_option'] = sge_blasr_aln
 
 
 def task_phasing(self):
@@ -114,16 +114,16 @@ def task_phasing(self):
 
     job_done = fn(self.job_done)
 
-    job_uid = self.parameters["job_uid"]
-    wd = self.parameters["wd"]
-    ctg_id = self.parameters["ctg_id"]
+    job_uid = self.parameters['job_uid']
+    wd = self.parameters['wd']
+    ctg_id = self.parameters['ctg_id']
 
-    config = self.parameters["config"]
-    sge_phasing = config["sge_phasing"]
-    job_type = config["job_type"]
+    config = self.parameters['config']
+    sge_phasing = config['sge_phasing']
+    job_type = config['job_type']
 
     script_dir = os.path.join( wd )
-    script_fn =  os.path.join( script_dir , "p_%s.sh" % (ctg_id))
+    script_fn =  os.path.join( script_dir , 'p_%s.sh' % (ctg_id))
 
     script = """\
 set -vex
@@ -138,24 +138,24 @@ date
 touch {job_done}
 """.format(**locals())
 
-    with open(script_fn,"w") as script_file:
+    with open(script_fn,'w') as script_file:
         script_file.write(script)
     self.generated_script_fn = script_fn
-    #job_data["sge_option"] = sge_phasing
+    #job_data['sge_option'] = sge_phasing
 
 
 def task_hasm(self):
     rid_to_phase_all = fn(self.rid_to_phase_all)
     job_done = fn(self.job_done)
-    config = self.parameters["config"]
-    sge_hasm = config["sge_hasm"]
+    config = self.parameters['config']
+    sge_hasm = config['sge_hasm']
 
-    wd = self.parameters["wd"]
+    wd = self.parameters['wd']
 
-    job_type = config["job_type"]
+    job_type = config['job_type']
 
     script_dir = os.path.join( wd )
-    script_fn =  os.path.join( script_dir , "hasm.sh")
+    script_fn =  os.path.join( script_dir , 'hasm.sh')
 
     las_fofn = '../../2-asm-falcon/las.fofn'
     las_fofn = '../../1-preads_ovl/merge-gather/las.fofn'
@@ -200,36 +200,36 @@ date
 touch {job_done}
 """.format(**locals())
 
-    with open(script_fn,"w") as script_file:
+    with open(script_fn,'w') as script_file:
         script_file.write(script)
     self.generated_script_fn = script_fn
-    #job_data["sge_option"] = sge_hasm
+    #job_data['sge_option'] = sge_hasm
 
 def unzip_all(config):
-    unzip_concurrent_jobs = config["unzip_concurrent_jobs"]
+    unzip_concurrent_jobs = config['unzip_concurrent_jobs']
     PypeProcWatcherWorkflow.setNumThreadAllowed(unzip_concurrent_jobs, unzip_concurrent_jobs)
     wf = PypeProcWatcherWorkflow()
     wf.max_jobs = unzip_concurrent_jobs
 
-    ctg_list_file = makePypeLocalFile("./3-unzip/reads/ctg_list")
-    falcon_asm_done = makePypeLocalFile("./2-asm-falcon/falcon_asm_done")
+    ctg_list_file = makePypeLocalFile('./3-unzip/reads/ctg_list')
+    falcon_asm_done = makePypeLocalFile('./2-asm-falcon/falcon_asm_done')
     wdir = os.path.abspath('./3-unzip/reads')
-    parameters = {"wd": wdir, "config": config}
+    parameters = {'wd': wdir, 'config': config}
 
-    job_done = makePypeLocalFile( os.path.join( parameters["wd"], "track_reads_done" ) )
-    make_track_reads_task = PypeTask(inputs = {"falcon_asm_done": falcon_asm_done},
-                                     outputs = {"job_done": job_done, "ctg_list_file": ctg_list_file},
+    job_done = makePypeLocalFile( os.path.join( parameters['wd'], 'track_reads_done' ) )
+    make_track_reads_task = PypeTask(inputs = {'falcon_asm_done': falcon_asm_done},
+                                     outputs = {'job_done': job_done, 'ctg_list_file': ctg_list_file},
                                      parameters = parameters,
                                      wdir = wdir,
                                      TaskType = PypeThreadTaskBase,
-                                     URL = "task://localhost/track_reads" )
+                                     URL = 'task://localhost/track_reads' )
     track_reads_task = make_track_reads_task(task_track_reads)
 
     wf.addTask(track_reads_task)
     wf.refreshTargets() #force refresh now, will put proper dependence later
 
     ctg_ids = []
-    with open("./3-unzip/reads/ctg_list") as f:
+    with open('./3-unzip/reads/ctg_list') as f:
         for row in f:
             row = row.strip()
             ctg_ids.append( row )
@@ -240,56 +240,56 @@ def unzip_all(config):
 
     for ctg_id in ctg_ids:
         # inputs
-        ref_fasta = makePypeLocalFile("./3-unzip/reads/{ctg_id}_ref.fa".format(ctg_id = ctg_id))
-        read_fasta = makePypeLocalFile("./3-unzip/reads/{ctg_id}_reads.fa".format(ctg_id = ctg_id))
+        ref_fasta = makePypeLocalFile('./3-unzip/reads/{ctg_id}_ref.fa'.format(ctg_id = ctg_id))
+        read_fasta = makePypeLocalFile('./3-unzip/reads/{ctg_id}_reads.fa'.format(ctg_id = ctg_id))
 
         # outputs
-        wd = os.path.join( os.getcwd(),  "./3-unzip/0-phasing/{ctg_id}/".format( ctg_id = ctg_id ) )
+        wd = os.path.join( os.getcwd(),  './3-unzip/0-phasing/{ctg_id}/'.format( ctg_id = ctg_id ) )
         #mkdir(wd)
         blasr_dir = os.path.join(wd, 'blasr')
-        ctg_aln_out = makePypeLocalFile( os.path.join( blasr_dir, "{ctg_id}_sorted.bam".format( ctg_id = ctg_id ) ) )
-        job_done = makePypeLocalFile( os.path.join( blasr_dir, "aln_{ctg_id}_done".format( ctg_id = ctg_id ) ) )
+        ctg_aln_out = makePypeLocalFile( os.path.join( blasr_dir, '{ctg_id}_sorted.bam'.format( ctg_id = ctg_id ) ) )
+        job_done = makePypeLocalFile( os.path.join( blasr_dir, 'aln_{ctg_id}_done'.format( ctg_id = ctg_id ) ) )
 
-        parameters = {"job_uid":"aln-"+ctg_id, "wd": blasr_dir, "config":config, "ctg_id": ctg_id}
-        make_blasr_task = PypeTask(inputs = {"ref_fasta": ref_fasta, "read_fasta": read_fasta},
-                                   outputs = {"ctg_aln_out": ctg_aln_out, "job_done": job_done},
+        parameters = {'job_uid':'aln-'+ctg_id, 'wd': blasr_dir, 'config':config, 'ctg_id': ctg_id}
+        make_blasr_task = PypeTask(inputs = {'ref_fasta': ref_fasta, 'read_fasta': read_fasta},
+                                   outputs = {'ctg_aln_out': ctg_aln_out, 'job_done': job_done},
                                    parameters = parameters,
                                    TaskType = PypeThreadTaskBase,
-                                   URL = "task://localhost/aln_{ctg_id}".format( ctg_id = ctg_id ) )
+                                   URL = 'task://localhost/aln_{ctg_id}'.format( ctg_id = ctg_id ) )
         blasr_task = make_blasr_task(task_run_blasr)
         aln1_outs[ctg_id] = (ctg_aln_out, job_done)
         wf.addTask(blasr_task)
 
         phasing_dir = os.path.join(wd, 'phasing')
-        job_done = makePypeLocalFile( os.path.join( phasing_dir, "p_{ctg_id}_done".format( ctg_id = ctg_id ) ) )
-        rid_to_phase_out = makePypeLocalFile( os.path.join( wd, "rid_to_phase.{ctg_id}".format( ctg_id = ctg_id ) ) ) # TODO: ???
-        all_ctg_out[ "r2p.{ctg_id}".format( ctg_id = ctg_id ) ] = rid_to_phase_out # implicit output?
+        job_done = makePypeLocalFile( os.path.join( phasing_dir, 'p_{ctg_id}_done'.format( ctg_id = ctg_id ) ) )
+        rid_to_phase_out = makePypeLocalFile( os.path.join( wd, 'rid_to_phase.{ctg_id}'.format( ctg_id = ctg_id ) ) ) # TODO: ???
+        all_ctg_out[ 'r2p.{ctg_id}'.format( ctg_id = ctg_id ) ] = rid_to_phase_out # implicit output?
 
-        parameters = {"job_uid":"ha-"+ctg_id, "wd": wd, "config":config, "ctg_id": ctg_id}
-        make_phasing_task = PypeTask(inputs = {"ref_fasta": ref_fasta, "aln_bam":ctg_aln_out},
-                                   outputs = {"job_done": job_done},
+        parameters = {'job_uid':'ha-'+ctg_id, 'wd': wd, 'config':config, 'ctg_id': ctg_id}
+        make_phasing_task = PypeTask(inputs = {'ref_fasta': ref_fasta, 'aln_bam':ctg_aln_out},
+                                   outputs = {'job_done': job_done},
                                    parameters = parameters,
                                    TaskType = PypeThreadTaskBase,
-                                   URL = "task://localhost/p_{ctg_id}".format( ctg_id = ctg_id ) )
+                                   URL = 'task://localhost/p_{ctg_id}'.format( ctg_id = ctg_id ) )
         phasing_task = make_phasing_task(task_phasing)
         wf.addTask(phasing_task)
 
     wf.refreshTargets()
 
-    hasm_wd = os.path.abspath("./3-unzip/1-hasm/")
+    hasm_wd = os.path.abspath('./3-unzip/1-hasm/')
     #mkdir(hasm_wd)
-    rid_to_phase_all =  makePypeLocalFile( os.path.join(hasm_wd, 'rid-to-phase-all', "rid_to_phase.all") )
-    task = PypeTask(inputs = all_ctg_out, outputs = {"rid_to_phase_all": rid_to_phase_all},
-                TaskType = PypeThreadTaskBase, URL = "task://localhost/rid_to_phase_all" )(get_rid_to_phase_all)
+    rid_to_phase_all =  makePypeLocalFile( os.path.join(hasm_wd, 'rid-to-phase-all', 'rid_to_phase.all') )
+    task = PypeTask(inputs = all_ctg_out, outputs = {'rid_to_phase_all': rid_to_phase_all},
+                TaskType = PypeThreadTaskBase, URL = 'task://localhost/rid_to_phase_all' )(get_rid_to_phase_all)
     wf.addTask(task)
 
-    parameters["wd"] = hasm_wd
-    job_done = makePypeLocalFile( os.path.join( hasm_wd, "hasm_done" ) )
-    make_hasm_task = PypeTask(inputs = {"rid_to_phase_all": rid_to_phase_all},
-                              outputs = {"job_done": job_done},
+    parameters['wd'] = hasm_wd
+    job_done = makePypeLocalFile( os.path.join( hasm_wd, 'hasm_done' ) )
+    make_hasm_task = PypeTask(inputs = {'rid_to_phase_all': rid_to_phase_all},
+                              outputs = {'job_done': job_done},
                               parameters = parameters,
                               TaskType = PypeThreadTaskBase,
-                              URL = "task://localhost/hasm" )
+                              URL = 'task://localhost/hasm' )
     hasm_task = make_hasm_task(task_hasm)
 
     wf.addTask(hasm_task)
@@ -305,14 +305,17 @@ def get_rid_to_phase_all(self):
     for fname in inputs_fn:
         output.extend( open(fname).read() )
 
-    out = open( rid_to_phase_all_fn, "w")
-    out.write("".join(output))
+    out = open( rid_to_phase_all_fn, 'w')
+    out.write(''.join(output))
     out.close()
 
 def main(argv=sys.argv):
+    global LOG
+    LOG = support.setup_logger(None)
+
 
     if len(argv) < 2 or argv[1].startswith('-'):
-        print "you need to provide a configuration file to specific a couple cluster running environment"
+        print 'you need to provide a configuration file to specific a couple cluster running environment'
         sys.exit(1)
 
     config_fn = argv[1]
@@ -320,27 +323,27 @@ def main(argv=sys.argv):
     config = ConfigParser.ConfigParser()
     config.read(config_fn)
 
-    job_type = "SGE"
+    job_type = 'SGE'
     if config.has_option('General', 'job_type'):
         job_type = config.get('General', 'job_type')
 
-    sge_blasr_aln = " -pe smp 24 -q bigmem "
+    sge_blasr_aln = ' -pe smp 24 -q bigmem '
     if config.has_option('Unzip', 'sge_blasr_aln'):
         sge_blasr_aln = config.get('Unzip', 'sge_blasr_aln')
 
-    smrt_bin = "/mnt/secondary/builds/full/3.0.0/prod/smrtanalysis_3.0.0.153854/smrtcmds/bin/"
+    smrt_bin = '/mnt/secondary/builds/full/3.0.0/prod/smrtanalysis_3.0.0.153854/smrtcmds/bin/'
     if config.has_option('Unzip', 'smrt_bin'):
         smrt_bin = config.get('Unzip', 'smrt_bin')
 
-    sge_phasing = " -pe smp 12 -q bigmem"
+    sge_phasing = ' -pe smp 12 -q bigmem'
     if config.has_option('Unzip', 'sge_phasing'):
         sge_phasing = config.get('Unzip', 'sge_phasing')
 
-    sge_hasm = " -pe smp 48 -q bigmem"
+    sge_hasm = ' -pe smp 48 -q bigmem'
     if config.has_option('Unzip', 'sge_hasm'):
         sge_hasm = config.get('Unzip', 'sge_hasm')
 
-    sge_track_reads = " -pe smp 12 -q bigmem"
+    sge_track_reads = ' -pe smp 12 -q bigmem'
     if config.has_option('Unzip', 'sge_track_reads'):
         sge_track_reads = config.get('Unzip', 'sge_track_reads')
 
@@ -348,14 +351,14 @@ def main(argv=sys.argv):
     if config.has_option('Unzip', 'unzip_concurrent_jobs'):
         unzip_concurrent_jobs = config.getint('Unzip', 'unzip_concurrent_jobs')
 
-    config = {"job_type": job_type,
-              "sge_blasr_aln": sge_blasr_aln,
-              "smrt_bin": smrt_bin,
-              "sge_phasing": sge_phasing,
-              "sge_hasm": sge_hasm,
-              "sge_track_reads": sge_track_reads,
-              "unzip_concurrent_jobs":unzip_concurrent_jobs}
+    config = {'job_type': job_type,
+              'sge_blasr_aln': sge_blasr_aln,
+              'smrt_bin': smrt_bin,
+              'sge_phasing': sge_phasing,
+              'sge_hasm': sge_hasm,
+              'sge_track_reads': sge_track_reads,
+              'unzip_concurrent_jobs':unzip_concurrent_jobs}
 
-    #support.job_type = "SGE" #tmp hack until we have a configuration parser
+    #support.job_type = 'SGE' #tmp hack until we have a configuration parser
 
     unzip_all(config)
