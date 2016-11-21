@@ -82,13 +82,13 @@ def task_run_quiver(self):
     smrt_bin = config['smrt_bin']
     sge_quiver = config['sge_quiver']
     job_type = config['job_type']
-    samtools = os.path.join( smrt_bin, 'samtools')
-    pbalign = os.path.join( smrt_bin, 'pbalign')
-    makePbi = os.path.join( smrt_bin, 'makePbi')
-    variantCaller = os.path.join( smrt_bin, 'variantCaller')
+    samtools = os.path.join(smrt_bin, 'samtools')
+    pbalign = os.path.join(smrt_bin, 'pbalign')
+    makePbi = os.path.join(smrt_bin, 'makePbi')
+    variantCaller = os.path.join(smrt_bin, 'variantCaller')
 
-    script_dir = os.path.join( wd )
-    script_fn =  os.path.join( script_dir , 'cns_%s.sh' % (ctg_id))
+    script_dir = os.path.join(wd)
+    script_fn =  os.path.join(script_dir , 'cns_%s.sh' % (ctg_id))
 
     script = """\
 set -vex
@@ -178,12 +178,12 @@ def main(argv=sys.argv):
     abscwd = os.path.abspath('.')
     parameters = {'wd': os.path.join(abscwd, '4-quiver', 'track_reads_h'), 'config': config}
     hasm_done = makePypeLocalFile('./3-unzip/1-hasm/hasm_done')
-    job_done = makePypeLocalFile( os.path.join( parameters['wd'], 'track_reads_h_done' ) )
+    job_done = makePypeLocalFile(os.path.join parameters['wd'], 'track_reads_h_done'))
     make_track_reads_task = PypeTask(inputs = {'hasm_done': hasm_done},
                                      outputs = {'job_done': job_done},
                                      parameters = parameters,
                                      TaskType = PypeThreadTaskBase,
-                                     URL = 'task://localhost/track_reads_h' )
+                                     URL = 'task://localhost/track_reads_h')
     track_reads_task = make_track_reads_task(task_track_reads)
     #sge_track_reads = config['sge_track_reads']
 
@@ -205,19 +205,19 @@ def main(argv=sys.argv):
         ref_seq_data[rid] = r.sequence
         ctg_types[rid] = 'h'
 
-    ctg_ids = sorted( ref_seq_data.keys() )
+    ctg_ids = sorted(ref_seq_data.keys())
     p_ctg_out=[]
     h_ctg_out=[]
     for ctg_id in ctg_ids:
         sequence = ref_seq_data[ctg_id]
         m_ctg_id = ctg_id.split('-')[0]
-        wd = os.path.join( os.getcwd(), './4-quiver/', m_ctg_id )
-        mkdir( wd )
-        ref_fasta = makePypeLocalFile(os.path.join(wd, '{ctg_id}_ref.fa'.format(ctg_id = ctg_id) ) )
-        read_sam = makePypeLocalFile(os.path.join( os.getcwd(), './4-quiver/reads/' '{ctg_id}.sam'.format(ctg_id = ctg_id) ) )
-        cns_fasta = makePypeLocalFile(os.path.join(wd, 'cns-{ctg_id}.fasta.gz'.format(ctg_id = ctg_id) ) )
-        cns_fastq = makePypeLocalFile(os.path.join(wd, 'cns-{ctg_id}.fastq.gz'.format(ctg_id = ctg_id) ) )
-        job_done = makePypeLocalFile(os.path.join(wd, '{ctg_id}_quiver_done'.format(ctg_id = ctg_id) ) )
+        wd = os.path.join(os.getcwd(), './4-quiver/', m_ctg_id)
+        mkdir(wd)
+        ref_fasta = makePypeLocalFile(os.path.join(wd, '{ctg_id}_ref.fa'.format(ctg_id = ctg_id)))
+        read_sam = makePypeLocalFile(os.path.join(os.getcwd(), './4-quiver/reads/' '{ctg_id}.sam'.format(ctg_id = ctg_id)))
+        cns_fasta = makePypeLocalFile(os.path.join(wd, 'cns-{ctg_id}.fasta.gz'.format(ctg_id = ctg_id)))
+        cns_fastq = makePypeLocalFile(os.path.join(wd, 'cns-{ctg_id}.fastq.gz'.format(ctg_id = ctg_id)))
+        job_done = makePypeLocalFile(os.path.join(wd, '{ctg_id}_quiver_done'.format(ctg_id = ctg_id)))
 
         if os.path.exists(fn(read_sam)):
             if ctg_types[ctg_id] == 'p':
@@ -233,26 +233,26 @@ def main(argv=sys.argv):
                                        outputs = {'cns_fasta': cns_fasta, 'cns_fastq': cns_fastq, 'job_done': job_done},
                                        parameters = parameters,
                                        TaskType = PypeThreadTaskBase,
-                                       URL = 'task://localhost/q_{ctg_id}'.format( ctg_id = ctg_id ) )
+                                       URL = 'task://localhost/q_{ctg_id}'.format(ctg_id = ctg_id))
             quiver_task = make_quiver_task(task_run_quiver)
-            wf.addTask( quiver_task )
+            wf.addTask(quiver_task)
     #sge_quiver = config['sge_quiver']
 
 
     wf.refreshTargets()
     #os.system('sleep 30')
 
-    mkdir( './4-quiver/cns_output' )
+    mkdir('./4-quiver/cns_output')
     os.system('rm ./4-quiver/cns_output/cns_p_ctg.fasta')
     os.system('rm ./4-quiver/cns_output/cns_p_ctg.fastq')
     for cns_fasta, cns_fastq in sorted(p_ctg_out):
-        os.system('zcat {cns_fasta} >> ./4-quiver/cns_output/cns_p_ctg.fasta'.format( cns_fasta=fn(cns_fasta) ) )
-        os.system('zcat {cns_fastq} >> ./4-quiver/cns_output/cns_p_ctg.fastq'.format( cns_fastq=fn(cns_fastq) ) )
+        os.system('zcat {cns_fasta} >> ./4-quiver/cns_output/cns_p_ctg.fasta'.format(cns_fasta=fn(cns_fasta)))
+        os.system('zcat {cns_fastq} >> ./4-quiver/cns_output/cns_p_ctg.fastq'.format(cns_fastq=fn(cns_fastq)))
 
 
 
     os.system('rm ./4-quiver/cns_output/cns_h_ctg.fasta')
     os.system('rm ./4-quiver/cns_output/cns_h_ctg.fastq')
     for cns_fasta, cns_fastq in sorted(h_ctg_out):
-        os.system('zcat {cns_fasta} >> ./4-quiver/cns_output/cns_h_ctg.fasta'.format( cns_fasta=fn(cns_fasta) ) )
-        os.system('zcat {cns_fastq} >> ./4-quiver/cns_output/cns_h_ctg.fastq'.format( cns_fastq=fn(cns_fastq) ) )
+        os.system('zcat {cns_fasta} >> ./4-quiver/cns_output/cns_h_ctg.fasta'.format(cns_fasta=fn(cns_fasta)))
+        os.system('zcat {cns_fastq} >> ./4-quiver/cns_output/cns_h_ctg.fastq'.format(cns_fastq=fn(cns_fastq)))
