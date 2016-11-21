@@ -9,25 +9,25 @@ from pypeflow.simple_pwatcher_bridge import (
 PypeThreadTaskBase = MyFakePypeThreadTaskBase
 from falcon_kit.FastaReader import FastaReader
 import glob
+import logging
 import os
 import re
 import sys
 import time
 import ConfigParser
 
-global fc_run_logger
-fc_run_logger = support.setup_logger(None)
+LOG = logging.getLogger(__name__)
 
 def system(call, check=False):
-    fc_run_logger.debug('$(%s)' %repr(call))
+    LOG.debug('$(%s)' %repr(call))
     rc = os.system(call)
     msg = "Call %r returned %d." % (call, rc)
     if rc:
-        fc_run_logger.warning(msg)
+        LOG.warning(msg)
         if check:
             raise Exception(msg)
     else:
-        fc_run_logger.debug(msg)
+        LOG.debug(msg)
     return rc
 
 def mkdir(d):
@@ -35,7 +35,6 @@ def mkdir(d):
         os.makedirs(d)
 
 def task_track_reads(self):
-
     job_done = fn(self.job_done)
     wd = self.parameters["wd"]
     config = self.parameters["config"]

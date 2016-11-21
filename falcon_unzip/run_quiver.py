@@ -9,6 +9,7 @@ from pypeflow.simple_pwatcher_bridge import (
 PypeThreadTaskBase = MyFakePypeThreadTaskBase
 from falcon_kit.FastaReader import FastaReader
 import glob
+import logging
 import os
 import pprint
 import re
@@ -17,24 +18,18 @@ import time
 import ConfigParser
 
 
-global fc_run_logger
-fc_run_logger = support.setup_logger(None)
-
-support.job_type = "SGE" #tmp hack until we have a configuration parser
-
-wait_time = 5
-fc_run_logger = None
+LOG = logging.getLogger(__name__)
 
 def system(call, check=False):
-    fc_run_logger.debug('$(%s)' %repr(call))
+    LOG.debug('$(%s)' %repr(call))
     rc = os.system(call)
     msg = "Call %r returned %d." % (call, rc)
     if rc:
-        fc_run_logger.warning(msg)
+        LOG.warning(msg)
         if check:
             raise Exception(msg)
     else:
-        fc_run_logger.debug(msg)
+        LOG.debug(msg)
     return rc
 
 def mkdir(d):
@@ -124,9 +119,8 @@ def task_run_quiver(self):
 
 
 def main(argv=sys.argv):
-
-    global fc_run_logger
-    fc_run_logger = support.setup_logger(None)
+    global LOG
+    LOG = support.setup_logger(None)
 
 
     if len(sys.argv) < 2:
@@ -172,7 +166,7 @@ def main(argv=sys.argv):
               "sge_track_reads": sge_track_reads,
               "input_bam_fofn": input_bam_fofn,
               "smrt_bin": smrt_bin}
-    fc_run_logger.info('config={}'.format(pprint.pformat(config)))
+    LOG.info('config={}'.format(pprint.pformat(config)))
 
     support.job_type = "SGE" #tmp hack until we have a configuration parser
 
