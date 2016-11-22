@@ -6,10 +6,12 @@ from pypeflow.simple_pwatcher_bridge import (PypeProcWatcherWorkflow, MyFakePype
         makePypeLocalFile, fn, PypeTask)
 PypeThreadTaskBase = MyFakePypeThreadTaskBase
 from falcon_kit.FastaReader import FastaReader
-import subprocess, shlex
+import argparse
+import logging
 import os
 import re
-import argparse
+import shlex
+import subprocess
 import sys
 
 cigar_re = r"(\d+)([MIDNSHP=X])"
@@ -572,5 +574,6 @@ def parse_args(argv):
     return args
 
 def main(argv=sys.argv):
+    logging.basicConfig()
     args = parse_args(argv)
     phasing(args)

@@ -1,7 +1,8 @@
-import os
-import sys
-import re
 import argparse
+import logging
+import os
+import re
+import sys
 
 
 def get_phasing_readmap(args):
@@ -11,7 +12,7 @@ def get_phasing_readmap(args):
     the_ctg_id = args.ctg_id
     base_dir = args.base_dir
 
-    rawread_id_file = os.path.join(read_map_dir, 'dump_raw_read_ids', 'raw_read_ids')
+    rawread_id_file = os.path.join(read_map_dir, 'dump_rawread_ids', 'rawread_ids')
     pread_id_file = os.path.join(read_map_dir, 'dump_pread_ids', 'pread_ids')
     rid_to_oid = open(rawread_id_file).read().split('\n')  #daligner raw read id to the original ids
     pid_to_fid = open(pread_id_file).read().split('\n')  #daligner pread id to the fake ids
@@ -67,5 +68,6 @@ def parse_args(argv):
 
 
 def main(argv=sys.argv):
+    logging.basicConfig()
     args = parse_args(argv)
     get_phasing_readmap(args)

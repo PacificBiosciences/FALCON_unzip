@@ -18,7 +18,7 @@ def get_read_hctg_map(asm_dir, hasm_dir, quiver_dir):
             max_jobs=12,
     )
 
-    rawread_id_file = makePypeLocalFile(os.path.join(asm_dir, 'read_maps/dump_raw_read_ids/raw_read_ids'))
+    rawread_id_file = makePypeLocalFile(os.path.join(asm_dir, 'read_maps/dump_rawread_ids/rawread_ids'))
     pread_id_file = makePypeLocalFile(os.path.join(asm_dir, 'read_maps/dump_pread_ids/pread_ids'))
     h_ctg_edges = makePypeLocalFile(os.path.join(hasm_dir, 'all_h_ctg_edges'))
     p_ctg_edges = makePypeLocalFile(os.path.join(hasm_dir, 'all_p_ctg_edges'))
@@ -97,7 +97,7 @@ def get_read_hctg_map(asm_dir, hasm_dir, quiver_dir):
 def parse_args(argv):
     parser = argparse.ArgumentParser(description='generate `4-quiver/read_maps/read_to_contig_map` that contains the \
 information from the chain of mapping: (contig id, last col) -> (internal p-read id) -> (internal raw-read id) -> (original read id)\n \
-it assumes the 2-asm-falcon/read_maps/raw_read_ids and pread_ids are already generated',
+it assumes the 2-asm-falcon/read_maps/rawread_ids and pread_ids are already generated',
               formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--basedir', type=str, default="./", help='the base working dir of a FALCON assembly')
     args = parser.parse_args(argv[1:])

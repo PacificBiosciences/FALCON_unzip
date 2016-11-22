@@ -10,8 +10,8 @@ def select_reads_from_bam(input_bam_fofn_fn, asm_dir, hasm_dir, quiver_dir):
     read_to_ctgs = {}
 
     rawread_to_contigs_fn = os.path.join(quiver_dir, 'read_maps', 'rawread_to_contigs')
-    raw_read_ids_fn = os.path.join(asm_dir, 'read_maps', 'raw_read_ids')
-    rid_to_oid = open(raw_read_ids_fn).read().split('\n')
+    rawread_ids_fn = os.path.join(asm_dir, 'read_maps', 'rawread_ids')
+    rid_to_oid = open(rawread_ids_fn).read().split('\n')
     with open(rawread_to_contigs_fn) as f:
         for row in f:
             row = row.strip().split()

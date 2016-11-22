@@ -142,13 +142,13 @@ def generate_read_to_ctg_map(self):
 wf.addTask( generate_read_to_ctg_map )
 
 def dump_rawread_to_ctg(self):
-    rawread_db = fn( self.rawread_db )
-    rawread_id_file = fn( self.rawread_id_file )
-    phased_read_file = fn( self.phased_reads)
-    las_file = fn( self.las_file )
-    rawread_to_contig_file = fn( self.rawread_to_contig_file )
-    read_to_contig_map = fn( self.read_to_contig_map )
-    rid_to_oid = open(rawread_id_file).read().split("\n")
+    rawread_db = fn(self.rawread_db)
+    rawread_id_file = fn(self.rawread_id_file)
+    phased_read_file = fn(self.phased_reads)
+    las_file = fn(self.las_file)
+    rawread_to_contig_file = fn(self.rawread_to_contig_file)
+    read_to_contig_map = fn(self.read_to_contig_map)
+    rid_to_oid = open(rawread_id_file).read().split('\n')
 
 
     ovlp_data = []

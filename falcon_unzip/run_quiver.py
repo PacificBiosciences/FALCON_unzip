@@ -178,7 +178,7 @@ def main(argv=sys.argv):
     abscwd = os.path.abspath('.')
     parameters = {'wd': os.path.join(abscwd, '4-quiver', 'track_reads_h'), 'config': config}
     hasm_done = makePypeLocalFile('./3-unzip/1-hasm/hasm_done')
-    job_done = makePypeLocalFile(os.path.join parameters['wd'], 'track_reads_h_done'))
+    job_done = makePypeLocalFile(os.path.join(parameters['wd'], 'track_reads_h_done'))
     make_track_reads_task = PypeTask(inputs = {'hasm_done': hasm_done},
                                      outputs = {'job_done': job_done},
                                      parameters = parameters,
