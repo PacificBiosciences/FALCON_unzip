@@ -9,6 +9,7 @@ from pypeflow.simple_pwatcher_bridge import (
 PypeThreadTaskBase = MyFakePypeThreadTaskBase
 from falcon_kit.FastaReader import FastaReader
 import glob
+import json
 import logging
 import os
 import pprint
@@ -115,6 +116,157 @@ touch {job_done}
     self.generated_script_fn = script_fn
     #job_data['sge_option'] = sge_quiver
 
+def rm(f):
+    system('rm -f {}'.format(f))
+def touch(f):
+    system('touch {}'.format(f))
+def task_cns_zcat(self):
+    gathered_p_ctg_fn = fn(self.gathered_p_ctg)
+    gathered_h_ctg_fn = fn(self.gathered_h_ctg)
+
+    cns_p_ctg_fasta_fn = fn(self.cns_p_ctg_fasta)
+    cns_p_ctg_fastq_fn = fn(self.cns_p_ctg_fastq)
+    cns_h_ctg_fasta_fn = fn(self.cns_h_ctg_fasta)
+    cns_h_ctg_fastq_fn = fn(self.cns_h_ctg_fastq)
+    job_done_fn = fn(self.job_done)
+
+    rm(cns_p_ctg_fasta_fn)
+    touch(cns_p_ctg_fasta_fn)
+    rm(cns_p_ctg_fastq_fn)
+    touch(cns_p_ctg_fastq_fn)
+    with open(gathered_p_ctg_fn) as ifs:
+        for line in ifs:
+            cns_fasta_fn, cns_fastq_fn = line.split()
+            system('zcat {cns_fasta_fn} >> {cns_p_ctg_fasta_fn}'.format(**locals()))
+            system('zcat {cns_fastq_fn} >> {cns_p_ctg_fastq_fn}'.format(**locals()))
+    with open(gathered_p_ctg_fn) as ifs:
+        for line in ifs:
+            cns_fasta_fn, cns_fastq_fn = line.split()
+            rm(cns_fasta_fn)
+            rm(cns_fasta_fn)
+    rm(cns_h_ctg_fasta_fn)
+    touch(cns_h_ctg_fasta_fn)
+    rm(cns_h_ctg_fastq_fn)
+    touch(cns_h_ctg_fastq_fn)
+    with open(gathered_h_ctg_fn) as ifs:
+        for line in ifs:
+            cns_fasta_fn, cns_fastq_fn = line.split()
+            system('zcat {cns_fasta_fn} >> {cns_h_ctg_fasta_fn}'.format(**locals()))
+            system('zcat {cns_fastq_fn} >> {cns_h_ctg_fastq_fn}'.format(**locals()))
+    with open(gathered_h_ctg_fn) as ifs:
+        for line in ifs:
+            cns_fasta_fn, cns_fastq_fn = line.split()
+            rm(cns_fasta_fn)
+            rm(cns_fasta_fn)
+
+    touch(job_done_fn)
+
+def task_scatter_quiver(self):
+    p_ctg_fn = fn(self.p_ctg_fa)
+    h_ctg_fn = fn(self.h_ctg_fa)
+    out_json = fn(self.scattered_quiver_json)
+
+    ref_seq_data = {}
+
+    # I think this will crash if the file is empty. Maybe that is ok.
+    p_ctg_fa = FastaReader(p_ctg_fn)
+    ctg_types = {}
+    for r in p_ctg_fa:
+        rid = r.name.split()[0]
+        ref_seq_data[rid] = r.sequence
+        ctg_types[rid] = 'p'
+
+
+    # I think this will crash if the file is empty. Maybe that is ok.
+    h_ctg_fa = FastaReader(h_ctg_fn)
+    for r in h_ctg_fa:
+        rid = r.name.split()[0]
+        ref_seq_data[rid] = r.sequence
+        ctg_types[rid] = 'h'
+
+    ctg_ids = sorted(ref_seq_data.keys())
+    #p_ctg_out=[]
+    #h_ctg_out=[]
+    #job_done_plfs = {}
+    jobs = []
+    for ctg_id in ctg_ids:
+        sequence = ref_seq_data[ctg_id]
+        m_ctg_id = ctg_id.split('-')[0]
+        wd = os.path.join(os.getcwd(), './4-quiver/', m_ctg_id)
+        ref_fasta = os.path.join(wd, '{ctg_id}_ref.fa'.format(ctg_id = ctg_id))
+        read_sam = os.path.join(os.getcwd(), './4-quiver/reads/' '{ctg_id}.sam'.format(ctg_id = ctg_id))
+        #cns_fasta = makePypeLocalFile(os.path.join(wd, 'cns-{ctg_id}.fasta.gz'.format(ctg_id = ctg_id)))
+        #cns_fastq = makePypeLocalFile(os.path.join(wd, 'cns-{ctg_id}.fastq.gz'.format(ctg_id = ctg_id)))
+        #job_done = makePypeLocalFile(os.path.join(wd, '{ctg_id}_quiver_done'.format(ctg_id = ctg_id)))
+
+        if os.path.exists(read_sam): # TODO(CD): Ask Jason what we should do if missing SAM. And what about network latency?
+            #if ctg_types[ctg_id] == 'p':
+            #    p_ctg_out.append( (cns_fasta, cns_fastq) )
+            #if ctg_types[ctg_id] == 'h':
+            #    h_ctg_out.append( (cns_fasta, cns_fastq) )
+            mkdir(wd)
+            if not os.path.exists(fn(ref_fasta)):
+                with open(fn(ref_fasta),'w') as f:
+                    print >>f, '>'+ctg_id
+                    print >>f, sequence
+            #parameters = {'job_uid':'q-'+ctg_id, 'wd': wd, 'config':config, 'ctg_id': ctg_id }
+            #make_quiver_task = PypeTask(inputs = {'ref_fasta': ref_fasta, 'read_sam': read_sam},
+            #                           outputs = {'cns_fasta': cns_fasta, 'cns_fastq': cns_fastq, 'job_done': job_done},
+            #                           parameters = parameters,
+            #                           TaskType = PypeThreadTaskBase,
+            #                           URL = 'task://localhost/q_{ctg_id}'.format(ctg_id = ctg_id))
+            #quiver_task = make_quiver_task(task_run_quiver)
+            #wf.addTask(quiver_task)
+            #job_done_plfs['{}'.format(ctg_id)] = job_done
+            new_job = {}
+            new_job['ctg_id'] = ctg_id
+            jobs.append(new_job)
+    open(out_json, 'w').write(json.dumps(jobs))
+
+def create_quiver_jobs(scattered_quiver_plf):
+    scattered_quiver_fn = fn(scattered_quiver_plf)
+    jobs = json.loads(open(scattered_quiver_fn).read())
+    #ctg_ids = sorted(jobs['ref_seq_data'])
+    p_ctg_out=[]
+    h_ctg_out=[]
+    job_done_plfs = {}
+    for job in jobs:
+        ctg_id = job['ctg_id']
+        m_ctg_id = ctg_id.split('-')[0]
+        wd = os.path.join(os.getcwd(), './4-quiver/', m_ctg_id)
+        ref_fasta = makePypeLocalFile(os.path.join(wd, '{ctg_id}_ref.fa'.format(ctg_id = ctg_id)))
+        read_sam = makePypeLocalFile(os.path.join(os.getcwd(), './4-quiver/reads/' '{ctg_id}.sam'.format(ctg_id = ctg_id)))
+        cns_fasta = makePypeLocalFile(os.path.join(wd, 'cns-{ctg_id}.fasta.gz'.format(ctg_id = ctg_id)))
+        cns_fastq = makePypeLocalFile(os.path.join(wd, 'cns-{ctg_id}.fastq.gz'.format(ctg_id = ctg_id)))
+        job_done = makePypeLocalFile(os.path.join(wd, '{ctg_id}_quiver_done'.format(ctg_id = ctg_id)))
+
+        if os.path.exists(fn(read_sam)): # TODO(CD): Ask Jason what we should do if missing SAM.
+            if ctg_types[ctg_id] == 'p':
+                p_ctg_out.append( (fn(cns_fasta), fn(cns_fastq)) )
+            elif ctg_types[ctg_id] == 'h':
+                h_ctg_out.append( (fn(cns_fasta), fn(cns_fastq)) )
+            else:
+                LOG.warning('Type is {!r}, not "p" or "h". Why are we running Quiver?'.format(ctg_types[ctg_id]))
+            parameters = {'job_uid':'q-'+ctg_id, 'wd': wd, 'config':config, 'ctg_id': ctg_id }
+            make_quiver_task = PypeTask(inputs = {'ref_fasta': ref_fasta, 'read_sam': read_sam,
+                                         'scattered_quiver': scattered_quiver_plf,
+                                       },
+                                       outputs = {'cns_fasta': cns_fasta, 'cns_fastq': cns_fastq, 'job_done': job_done},
+                                       parameters = parameters,
+                                       TaskType = PypeThreadTaskBase,
+                                       URL = 'task://localhost/q_{ctg_id}'.format(ctg_id = ctg_id))
+            quiver_task = make_quiver_task(task_run_quiver)
+            wf.addTask(quiver_task)
+            job_done_plfs['{}'.format(ctg_id)] = job_done
+    #sge_quiver = config['sge_quiver']
+    return p_ctg_out, h_ctg_out, job_done_plfs
+
+def task_gather_quiver(self):
+    """We wrote the "gathered" files during task construction.
+    """
+    job_done_fn = fn(self.job_done)
+    touch(job_done_fn)
+
 
 def main(argv=sys.argv):
     global LOG
@@ -166,9 +318,7 @@ def main(argv=sys.argv):
               'smrt_bin': smrt_bin}
     LOG.info('config={}'.format(pprint.pformat(config)))
 
-    support.job_type = 'SGE' #tmp hack until we have a configuration parser
-
-    ctg_ids = []
+    #support.job_type = 'SGE' #tmp hack until we have a configuration parser
 
 
     wf = PypeProcWatcherWorkflow(
@@ -177,10 +327,10 @@ def main(argv=sys.argv):
 
     abscwd = os.path.abspath('.')
     parameters = {'wd': os.path.join(abscwd, '4-quiver', 'track_reads_h'), 'config': config}
-    hasm_done = makePypeLocalFile('./3-unzip/1-hasm/hasm_done')
-    job_done = makePypeLocalFile(os.path.join(parameters['wd'], 'track_reads_h_done'))
-    make_track_reads_task = PypeTask(inputs = {'hasm_done': hasm_done},
-                                     outputs = {'job_done': job_done},
+    hasm_done_plf = makePypeLocalFile('./3-unzip/1-hasm/hasm_done') # by convention
+    track_reads_h_done_plf = makePypeLocalFile(os.path.join(parameters['wd'], 'track_reads_h_done'))
+    make_track_reads_task = PypeTask(inputs = {'hasm_done': hasm_done_plf},
+                                     outputs = {'job_done': track_reads_h_done_plf},
                                      parameters = parameters,
                                      TaskType = PypeThreadTaskBase,
                                      URL = 'task://localhost/track_reads_h')
@@ -188,71 +338,66 @@ def main(argv=sys.argv):
     #sge_track_reads = config['sge_track_reads']
 
     wf.addTask(track_reads_task)
-    wf.refreshTargets() #force refresh now, will put proper dependence later
 
-    ref_seq_data = {}
-    p_ctg_fa = FastaReader('./3-unzip/all_p_ctg.fa')
-    ctg_types = {}
-    for r in p_ctg_fa:
-        rid = r.name.split()[0]
-        ref_seq_data[rid] = r.sequence
-        ctg_types[rid] = 'p'
+    scattered_quiver_plf = makePypeLocalFile('4-quiver/quiver_scatter/scattered.json')
+    make_task = PypeTask(
+            inputs = {
+                'p_ctg_fa': makePypeLocalFile('3-unzip/all_p_ctg.fa'),
+                'h_ctg_fa': makePypeLocalFile('3-unzip/all_h_ctg.fa'),
+                'track_reads_h_done': track_reads_h_done_plf,
+            },
+            outputs = {
+                'scattered_quiver_json': scattered_quiver_plf,
+            },
+            parameters = {},
+    )
+    wf.addTask(make_task(task_scatter_quiver))
+    wf.refreshTargets()
 
+    p_ctg_out, h_ctg_out, job_done_plfs = create_quiver_jobs(scattered_quiver_plf)
 
-    h_ctg_fa = FastaReader('./3-unzip/all_h_ctg.fa')
-    for r in h_ctg_fa:
-        rid = r.name.split()[0]
-        ref_seq_data[rid] = r.sequence
-        ctg_types[rid] = 'h'
+    gathered_p_ctg_plf = makePypeLocalFile('4-quiver/cns_gather/p_ctg.txt')
+    gathered_h_ctg_plf = makePypeLocalFile('4-quiver/cns_gather/h_ctg.txt')
+    gather_done_plf = makePypeLocalFile('4-quiver/cns_gather/job_done')
+    mkdir('4-quiver/cns_gather')
+    with open(fn(gathered_p_ctg_plf), 'w') as ifs:
+        for cns_fasta_fn, cns_fastq_fn in sorted(p_ctg_out):
+            ifs.write('{} {}\n'.format(cns_fasta_fn, cns_fastq_fn))
+    with open(fn(gathered_h_ctg_plf), 'w') as ifs:
+        for cns_fasta_fn, cns_fastq_fn in sorted(h_ctg_out):
+            ifs.write('{} {}\n'.format(cns_fasta_fn, cns_fastq_fn))
 
-    ctg_ids = sorted(ref_seq_data.keys())
-    p_ctg_out=[]
-    h_ctg_out=[]
-    for ctg_id in ctg_ids:
-        sequence = ref_seq_data[ctg_id]
-        m_ctg_id = ctg_id.split('-')[0]
-        wd = os.path.join(os.getcwd(), './4-quiver/', m_ctg_id)
-        mkdir(wd)
-        ref_fasta = makePypeLocalFile(os.path.join(wd, '{ctg_id}_ref.fa'.format(ctg_id = ctg_id)))
-        read_sam = makePypeLocalFile(os.path.join(os.getcwd(), './4-quiver/reads/' '{ctg_id}.sam'.format(ctg_id = ctg_id)))
-        cns_fasta = makePypeLocalFile(os.path.join(wd, 'cns-{ctg_id}.fasta.gz'.format(ctg_id = ctg_id)))
-        cns_fastq = makePypeLocalFile(os.path.join(wd, 'cns-{ctg_id}.fastq.gz'.format(ctg_id = ctg_id)))
-        job_done = makePypeLocalFile(os.path.join(wd, '{ctg_id}_quiver_done'.format(ctg_id = ctg_id)))
+    make_task = PypeTask(
+            inputs = job_done_plfs,
+            outputs = {
+                'job_done': gather_done_plf,
+            },
+            parameters = {},
+    )
+    wf.addTask(make_task(task_gather_quiver))
+    wf.refreshTargets()
 
-        if os.path.exists(fn(read_sam)):
-            if ctg_types[ctg_id] == 'p':
-                p_ctg_out.append( (cns_fasta, cns_fastq) )
-            if ctg_types[ctg_id] == 'h':
-                h_ctg_out.append( (cns_fasta, cns_fastq) )
-            if not os.path.exists(fn(ref_fasta)):
-                with open(fn(ref_fasta),'w') as f:
-                    print >>f, '>'+ctg_id
-                    print >>f, sequence
-            parameters = {'job_uid':'q-'+ctg_id, 'wd': wd, 'config':config, 'ctg_id': ctg_id }
-            make_quiver_task = PypeTask(inputs = {'ref_fasta': ref_fasta, 'read_sam': read_sam},
-                                       outputs = {'cns_fasta': cns_fasta, 'cns_fastq': cns_fastq, 'job_done': job_done},
-                                       parameters = parameters,
-                                       TaskType = PypeThreadTaskBase,
-                                       URL = 'task://localhost/q_{ctg_id}'.format(ctg_id = ctg_id))
-            quiver_task = make_quiver_task(task_run_quiver)
-            wf.addTask(quiver_task)
-    #sge_quiver = config['sge_quiver']
-
+    cns_p_ctg_fasta_plf = makePypeLocalFile('4-quiver/cns_output/cns_p_ctg.fasta')
+    cns_p_ctg_fastq_plf = makePypeLocalFile('4-quiver/cns_output/cns_p_ctg.fastq')
+    cns_h_ctg_fasta_plf = makePypeLocalFile('4-quiver/cns_output/cns_h_ctg.fasta')
+    cns_h_ctg_fastq_plf = makePypeLocalFile('4-quiver/cns_output/cns_h_ctg.fastq')
+    zcat_done_plf = makePypeLocalFile('4-quiver/cns_output/job_done')
+    make_task = PypeTask(
+            inputs = {
+                'gathered_p_ctg': gathered_p_ctg_plf,
+                'gathered_h_ctg': gathered_h_ctg_plf,
+                'gather_done': gather_done_plf,
+            },
+            outputs = {
+                'cns_p_ctg_fasta': cns_p_ctg_fasta_plf,
+                'cns_p_ctg_fastq': cns_p_ctg_fastq_plf,
+                'cns_h_ctg_fasta': cns_h_ctg_fasta_plf,
+                'cns_h_ctg_fastq': cns_h_ctg_fastq_plf,
+                'job_done': zcat_done_plf,
+            },
+            parameters = {},
+            URL = 'task://localhost/cns_zcat',
+    )
+    wf.addTask(make_task(task_cns_zcat))
 
     wf.refreshTargets()
-    #os.system('sleep 30')
-
-    mkdir('./4-quiver/cns_output')
-    os.system('rm ./4-quiver/cns_output/cns_p_ctg.fasta')
-    os.system('rm ./4-quiver/cns_output/cns_p_ctg.fastq')
-    for cns_fasta, cns_fastq in sorted(p_ctg_out):
-        os.system('zcat {cns_fasta} >> ./4-quiver/cns_output/cns_p_ctg.fasta'.format(cns_fasta=fn(cns_fasta)))
-        os.system('zcat {cns_fastq} >> ./4-quiver/cns_output/cns_p_ctg.fastq'.format(cns_fastq=fn(cns_fastq)))
-
-
-
-    os.system('rm ./4-quiver/cns_output/cns_h_ctg.fasta')
-    os.system('rm ./4-quiver/cns_output/cns_h_ctg.fastq')
-    for cns_fasta, cns_fastq in sorted(h_ctg_out):
-        os.system('zcat {cns_fasta} >> ./4-quiver/cns_output/cns_h_ctg.fasta'.format(cns_fasta=fn(cns_fasta)))
-        os.system('zcat {cns_fastq} >> ./4-quiver/cns_output/cns_h_ctg.fastq'.format(cns_fastq=fn(cns_fastq)))
