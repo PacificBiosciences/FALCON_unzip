@@ -1,7 +1,10 @@
-from pypeflow.common import *
-from pypeflow.data import PypeLocalFile, makePypeLocalFile, fn
-from pypeflow.task import PypeTask, PypeThreadTaskBase, PypeTaskBase
-from pypeflow.controller import PypeWorkflow, PypeMPWorkflow, PypeThreadWorkflow
+#from pypeflow.common import *
+#from pypeflow.data import PypeLocalFile, makePypeLocalFile, fn
+#from pypeflow.task import PypeTask, PypeThreadTaskBase, PypeTaskBase
+#from pypeflow.controller import PypeWorkflow, PypeMPWorkflow, PypeThreadWorkflow
+from pypeflow.simple_pwatcher_bridge import (PypeProcWatcherWorkflow, MyFakePypeThreadTaskBase,
+        makePypeLocalFile, fn, PypeTask)
+PypeThreadTaskBase = MyFakePypeThreadTaskBase
 import sys
 import os
 import argparse
@@ -11,9 +14,9 @@ def make_dirs(d):
         os.makedirs(d)
 
 def get_read_hctg_map(asm_dir, hasm_dir, quiver_dir):
-
-    PypeMPWorkflow.setNumThreadAllowed(12, 12)
-    wf = PypeMPWorkflow()
+    wf = PypeProcWatcherWorkflow(
+            max_jobs=12,
+    )
 
     rawread_id_file = makePypeLocalFile(os.path.join(asm_dir, 'read_maps/raw_read_ids'))
     pread_id_file = makePypeLocalFile(os.path.join(asm_dir, 'read_maps/pread_ids'))

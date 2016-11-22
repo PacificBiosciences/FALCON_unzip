@@ -171,9 +171,9 @@ def main(argv=sys.argv):
     ctg_ids = []
 
 
-    PypeProcWatcherWorkflow.setNumThreadAllowed(quiver_concurrent_jobs, quiver_concurrent_jobs)
-    wf = PypeProcWatcherWorkflow()
-    wf.max_jobs = quiver_concurrent_jobs
+    wf = PypeProcWatcherWorkflow(
+            max_jobs=quiver_concurrent_jobs,
+    )
 
     abscwd = os.path.abspath('.')
     parameters = {'wd': os.path.join(abscwd, '4-quiver', 'track_reads_h'), 'config': config}

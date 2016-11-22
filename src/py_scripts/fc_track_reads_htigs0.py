@@ -1,7 +1,10 @@
-from pypeflow.common import * 
-from pypeflow.data import PypeLocalFile, makePypeLocalFile, fn
-from pypeflow.task import PypeTask, PypeThreadTaskBase, PypeTaskBase
-from pypeflow.controller import PypeWorkflow, PypeMPWorkflow, PypeThreadWorkflow
+#from pypeflow.common import *
+#from pypeflow.data import PypeLocalFile, makePypeLocalFile, fn
+#from pypeflow.task import PypeTask, PypeThreadTaskBase, PypeTaskBase
+#from pypeflow.controller import PypeWorkflow, PypeMPWorkflow, PypeThreadWorkflow
+from pypeflow.simple_pwatcher_bridge import (PypeProcWatcherWorkflow, MyFakePypeThreadTaskBase,
+        makePypeLocalFile, fn, PypeTask)
+PypeThreadTaskBase = MyFakePypeThreadTaskBase
 from falcon_kit.FastaReader import FastaReader
 from falcon_kit.fc_asm_graph import AsmGraph
 import glob
@@ -21,8 +24,9 @@ asm_dir = os.path.abspath( os.path.join("./3-unzip/") )
 read_map_dir = os.path.abspath(os.path.join(asm_dir, "read_maps"))
 make_dirs(read_map_dir)
 
-PypeMPWorkflow.setNumThreadAllowed(12, 12)
-wf = PypeMPWorkflow()
+wf = PypeProcWatcherWorkflow(
+        max_jobs=12,
+)
 
 rawread_db = makePypeLocalFile( os.path.join( rawread_dir, "raw_reads.db" ) )
 rawread_id_file = makePypeLocalFile( os.path.join( rawread_dir, "raw_read_ids" ) )

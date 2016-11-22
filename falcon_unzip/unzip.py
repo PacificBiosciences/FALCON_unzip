@@ -207,8 +207,9 @@ touch {job_done}
 
 def unzip_all(config):
     unzip_concurrent_jobs = config['unzip_concurrent_jobs']
-    PypeProcWatcherWorkflow.setNumThreadAllowed(unzip_concurrent_jobs, unzip_concurrent_jobs)
-    wf = PypeProcWatcherWorkflow()
+    wf = PypeProcWatcherWorkflow(
+            max_jobs=unzip_concurrent_jobs,
+    )
     wf.max_jobs = unzip_concurrent_jobs
 
     ctg_list_file = makePypeLocalFile('./3-unzip/reads/ctg_list')

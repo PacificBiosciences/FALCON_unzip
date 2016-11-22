@@ -1,7 +1,10 @@
-from pypeflow.common import *
-from pypeflow.data import PypeLocalFile, makePypeLocalFile, fn
-from pypeflow.task import PypeTask, PypeThreadTaskBase, PypeTaskBase
-from pypeflow.controller import PypeWorkflow, PypeThreadWorkflow
+#from pypeflow.common import *
+#from pypeflow.data import PypeLocalFile, makePypeLocalFile, fn
+#from pypeflow.task import PypeTask, PypeThreadTaskBase, PypeTaskBase
+#from pypeflow.controller import PypeWorkflow, PypeThreadWorkflow
+from pypeflow.simple_pwatcher_bridge import (PypeProcWatcherWorkflow, MyFakePypeThreadTaskBase,
+        makePypeLocalFile, fn, PypeTask)
+PypeThreadTaskBase = MyFakePypeThreadTaskBase
 from falcon_kit.FastaReader import FastaReader
 import subprocess, shlex
 import os
@@ -490,10 +493,9 @@ def phasing(args):
             continue
         ref_seq = r.sequence.upper()
 
-    PypeThreadWorkflow.setNumThreadAllowed(1, 1)
-    wf = PypeThreadWorkflow()
-
-
+    wf = PypeProcWatcherWorkflow(
+            max_jobs=1,
+    )
 
     bam_file = makePypeLocalFile(bam_fn)
     vmap_file = makePypeLocalFile( os.path.join(base_dir, ctg_id, "variant_map") )
