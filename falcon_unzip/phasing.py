@@ -1,18 +1,23 @@
-from pypeflow.common import * 
-from pypeflow.data import PypeLocalFile, makePypeLocalFile, fn
-from pypeflow.task import PypeTask, PypeThreadTaskBase, PypeTaskBase
-from pypeflow.controller import PypeWorkflow, PypeThreadWorkflow
+#from pypeflow.common import *
+#from pypeflow.data import PypeLocalFile, makePypeLocalFile, fn
+#from pypeflow.task import PypeTask, PypeThreadTaskBase, PypeTaskBase
+#from pypeflow.controller import PypeWorkflow, PypeThreadWorkflow
+from pypeflow.simple_pwatcher_bridge import (PypeProcWatcherWorkflow, MyFakePypeThreadTaskBase,
+        makePypeLocalFile, fn, PypeTask)
+PypeThreadTaskBase = MyFakePypeThreadTaskBase
 from falcon_kit.FastaReader import FastaReader
-import subprocess, shlex
+import argparse
+import logging
 import os
 import re
-import argparse
+import shlex
+import subprocess
 import sys
 
 cigar_re = r"(\d+)([MIDNSHP=X])"
 
 def make_het_call(self):
-    
+
     bam_fn = fn(self.bam_file)
     ctg_id = self.parameters["ctg_id"]
     ref_seq = self.parameters["ref_seq"]
@@ -101,7 +106,7 @@ def make_het_call(self):
                 if len(pileup[pos]) < 2:
                     del pileup[pos]
                     continue
-                base_count = [] 
+                base_count = []
                 total_count = 0
                 for b in ["A", "C", "G", "T"]:
                     count = len(pileup[pos].get(b,[]))
@@ -115,7 +120,7 @@ def make_het_call(self):
                 base_count.reverse()
                 p0 = 1.0 *  base_count[0][0] / total_count
                 p1 = 1.0 *  base_count[1][0] / total_count
-                if p0 < 1.0 - th and p1 > th:  
+                if p0 < 1.0 - th and p1 > th:
                     b0 = base_count[0][1]
                     b1 = base_count[1][1]
                     ref_base = ref_seq[pos]
@@ -123,7 +128,7 @@ def make_het_call(self):
                     for q_id_ in pileup[pos][b0]:
                         print >> vmap, pos+1, ref_base, b0, q_id_
                     for q_id_ in pileup[pos][b1]:
-                        print >> vmap, pos+1, ref_base, b1, q_id_ 
+                        print >> vmap, pos+1, ref_base, b1, q_id_
                 del pileup[pos]
 
 
@@ -141,7 +146,7 @@ def generate_association_table(self):
 
     vmap = {}
     v_positions = []
-    
+
     with open(vmap_fn) as f:
         for l in f:
             l = l.strip().split()
@@ -174,13 +179,13 @@ def generate_association_table(self):
                 for b1, qids1 in list1:
                     p1table.append( (b1, len(qids1) ) )
                     s1 += len(qids1)
-                 
+
                 s2 = 0
                 list2 = vmap[ (pos2, rb2) ].items()
                 for b2, qids2 in list2:
                     p2table.append( (b2, len(qids2) ) )
                     s2 += len(qids2)
-                
+
                 total_s = 0
                 for b1, qids1 in list1:
                     for b2, qids2 in list2:
@@ -189,13 +194,13 @@ def generate_association_table(self):
                         total_s += s
                 if total_s < 6:
                     continue
-                
+
                 b11 = p1table[0][0]
                 b12 = p1table[1][0]
                 b21 = p2table[0][0]
                 b22 = p2table[1][0]
-                print >> out_f, pos1, b11, b12, pos2, b21, b22, ct[(b11,b21)], ct[(b11,b22)], ct[(b12,b21)], ct[(b12,b22)] 
-            
+                print >> out_f, pos1, b11, b12, pos2, b21, b22, ct[(b11,b21)], ct[(b11,b22)], ct[(b12,b21)], ct[(b12,b22)]
+
 
                 #xary.append(pos1)
                 #yary.append(pos2)
@@ -221,7 +226,7 @@ def get_phased_blocks(self):
 
     c_score = {}
     states = {}
-    positions = set() 
+    positions = set()
 
 
 
@@ -347,7 +352,7 @@ def get_phased_blocks(self):
     left_extent = {}
     left_score = {}
 
-    
+
     for p in positions:
 
         left_extent[p] = p
@@ -359,12 +364,12 @@ def get_phased_blocks(self):
             for pp in left_connect[p]:
                 st1 = states[pp]
                 s = get_score( c_score, pp, p, st1, st0)
-                s_ = get_score( c_score, pp, p, st1, st0_) 
+                s_ = get_score( c_score, pp, p, st1, st0_)
                 left_score[p] += s - s_
                 if s - s_ > 0 and pp < left:
                     left = pp
             left_extent[p] = left
-                
+
         right_extent[p] = p
         right_score[p] = 0
         if p in right_connect:
@@ -374,13 +379,13 @@ def get_phased_blocks(self):
             for pp in right_connect[p]:
                 st1 = states[pp]
                 s = get_score( c_score, p, pp, st0, st1)
-                s_ = get_score( c_score, p, pp, st0_, st1) 
+                s_ = get_score( c_score, p, pp, st0_, st1)
                 right_score[p] += s - s_
                 if s - s_ > 0 and pp > right:
                     right = pp
             right_extent[p] = right
-        
-        
+
+
 
 
     phase_block_id = 1
@@ -405,18 +410,18 @@ def get_phased_blocks(self):
     else:
         phase_block_id -= 1
 
-    
+
     with open(p_variant_fn, "w") as out_f:
         for pid in xrange(1, phase_block_id+1):
             if len(phase_blocks[pid]) == 0:
                 continue
             min_ = min( [x[0] for x in phase_blocks[pid]] )
             max_ = max( [x[0] for x in phase_blocks[pid]] )
-            
-            print >>out_f, "P", pid, min_, max_, max_ - min_, len(phase_blocks[pid]), 1.0 * (max_-min_)/len(phase_blocks[pid]) 
+
+            print >>out_f, "P", pid, min_, max_, max_ - min_, len(phase_blocks[pid]), 1.0 * (max_-min_)/len(phase_blocks[pid])
             for p, b1, b2 in phase_blocks[pid]:
                 rb = ref_base[p]
-                print >>out_f, "V", pid, p, "%d_%s_%s" % (p,rb,b1), "%d_%s_%s" % (p,rb,b2), left_extent[p], right_extent[p], left_score[p], right_score[p] 
+                print >>out_f, "V", pid, p, "%d_%s_%s" % (p,rb,b1), "%d_%s_%s" % (p,rb,b2), left_extent[p], right_extent[p], left_score[p], right_score[p]
 
 def get_phased_reads(self):
 
@@ -427,7 +432,7 @@ def get_phased_reads(self):
 
     ctg_id = parameters["ctg_id"]
 
-    phased_read_fn = fn(self.phased_read_file) 
+    phased_read_fn = fn(self.phased_read_file)
 
     rid_map = {}
     with open(q_id_map_fn) as f:
@@ -438,7 +443,7 @@ def get_phased_reads(self):
 
     read_to_variants = {}
     variant_to_reads = {}
-    with open(vmap_fn) as f: 
+    with open(vmap_fn) as f:
         for l in f:
             l = l.strip().split()
             variant = "_".join(l[:3])
@@ -459,7 +464,7 @@ def get_phased_reads(self):
             pb_id = int(l[1])
             variant_to_phase[ l[3] ] = (pb_id, 0)
             variant_to_phase[ l[4] ] = (pb_id, 1)
-    
+
     with open(phased_read_fn, "w") as out_f:
         for r in read_to_variants:
             vl = {}
@@ -482,28 +487,27 @@ def phasing(args):
     fasta_fn = args.fasta
     ctg_id = args.ctg_id
     base_dir = args.base_dir
-    
-    ref_seq = "" 
+
+    ref_seq = ""
     for r in FastaReader(fasta_fn):
         rid = r.name.split()[0]
         if rid != ctg_id:
             continue
         ref_seq = r.sequence.upper()
 
-    PypeThreadWorkflow.setNumThreadAllowed(1, 1)
-    wf = PypeThreadWorkflow()
-
-
+    wf = PypeProcWatcherWorkflow(
+            max_jobs=1,
+    )
 
     bam_file = makePypeLocalFile(bam_fn)
-    vmap_file = makePypeLocalFile( os.path.join(base_dir, ctg_id, "variant_map") )
-    vpos_file = makePypeLocalFile( os.path.join(base_dir, ctg_id, "variant_pos") )
-    q_id_map_file = makePypeLocalFile( os.path.join(base_dir, ctg_id, "q_id_map") )
+    vmap_file = makePypeLocalFile( os.path.join(base_dir, ctg_id, 'het_call', "variant_map") )
+    vpos_file = makePypeLocalFile( os.path.join(base_dir, ctg_id, 'het_call', "variant_pos") )
+    q_id_map_file = makePypeLocalFile( os.path.join(base_dir, ctg_id, 'het_call', "q_id_map") )
     parameters = {}
     parameters["ctg_id"] = ctg_id
     parameters["ref_seq"] = ref_seq
     parameters["base_dir"] = base_dir
-    
+
     make_het_call_task = PypeTask( inputs = { "bam_file": bam_file },
                          outputs = { "vmap_file": vmap_file, "vpos_file": vpos_file, "q_id_map_file": q_id_map_file },
                          parameters = parameters,
@@ -515,7 +519,7 @@ def phasing(args):
 
 
 
-    atable_file = makePypeLocalFile( os.path.join(base_dir, ctg_id, "atable") )
+    atable_file = makePypeLocalFile( os.path.join(base_dir, ctg_id, 'g_atable', "atable") )
     parameters = {}
     parameters["ctg_id"] = ctg_id
     parameters["base_dir"] = base_dir
@@ -530,7 +534,7 @@ def phasing(args):
 
 
 
-    phased_variant_file = makePypeLocalFile( os.path.join(base_dir, ctg_id, "phased_variants") )
+    phased_variant_file = makePypeLocalFile( os.path.join(base_dir, ctg_id, 'get_phased_blocks', "phased_variants") )
     get_phased_blocks_task = PypeTask( inputs = { "vmap_file": vmap_file, "atable_file": atable_file },
                                       outputs = { "phased_variant_file": phased_variant_file },
                                       TaskType = PypeThreadTaskBase,
@@ -541,19 +545,19 @@ def phasing(args):
 
 
     phased_read_file = makePypeLocalFile( os.path.join(base_dir, ctg_id, "phased_reads") )
-    get_phased_reads_task = PypeTask( inputs = { "vmap_file": vmap_file, 
-                                                 "q_id_map_file": q_id_map_file, 
+    get_phased_reads_task = PypeTask( inputs = { "vmap_file": vmap_file,
+                                                 "q_id_map_file": q_id_map_file,
                                                  "phased_variant_file": phased_variant_file },
                                       outputs = { "phased_read_file": phased_read_file },
                                       parameters = {"ctg_id": ctg_id},
                                       TaskType = PypeThreadTaskBase,
                                       URL = "task://localhost/get_phased_reads") (get_phased_reads)
     wf.addTasks([get_phased_reads_task])
-    
 
-    wf.refreshTargets() 
+
+    wf.refreshTargets()
     #with open("fc_phasing_wf.dot", "w") as f:
-    #    print >>f, wf.graphvizDot 
+    #    print >>f, wf.graphvizDot
 
 def parse_args(argv):
     parser = argparse.ArgumentParser(description='phasing variants and reads from a bam file')
@@ -570,6 +574,6 @@ def parse_args(argv):
     return args
 
 def main(argv=sys.argv):
+    logging.basicConfig()
     args = parse_args(argv)
     phasing(args)
-
