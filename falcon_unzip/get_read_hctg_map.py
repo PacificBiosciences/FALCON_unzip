@@ -18,8 +18,8 @@ def get_read_hctg_map(asm_dir, hasm_dir, quiver_dir):
             max_jobs=12,
     )
 
-    rawread_id_file = makePypeLocalFile(os.path.join(asm_dir, 'read_maps/raw_read_ids'))
-    pread_id_file = makePypeLocalFile(os.path.join(asm_dir, 'read_maps/pread_ids'))
+    rawread_id_file = makePypeLocalFile(os.path.join(asm_dir, 'read_maps/dump_raw_read_ids/raw_read_ids'))
+    pread_id_file = makePypeLocalFile(os.path.join(asm_dir, 'read_maps/dump_pread_ids/pread_ids'))
     h_ctg_edges = makePypeLocalFile(os.path.join(hasm_dir, 'all_h_ctg_edges'))
     p_ctg_edges = makePypeLocalFile(os.path.join(hasm_dir, 'all_p_ctg_edges'))
     h_ctg_ids = makePypeLocalFile( os.path.join(hasm_dir, "all_h_ctg_ids"))

@@ -498,9 +498,9 @@ def phasing(args):
     )
 
     bam_file = makePypeLocalFile(bam_fn)
-    vmap_file = makePypeLocalFile( os.path.join(base_dir, ctg_id, "variant_map") )
-    vpos_file = makePypeLocalFile( os.path.join(base_dir, ctg_id, "variant_pos") )
-    q_id_map_file = makePypeLocalFile( os.path.join(base_dir, ctg_id, "q_id_map") )
+    vmap_file = makePypeLocalFile( os.path.join(base_dir, ctg_id, 'het_call', "variant_map") )
+    vpos_file = makePypeLocalFile( os.path.join(base_dir, ctg_id, 'het_call', "variant_pos") )
+    q_id_map_file = makePypeLocalFile( os.path.join(base_dir, ctg_id, 'het_call', "q_id_map") )
     parameters = {}
     parameters["ctg_id"] = ctg_id
     parameters["ref_seq"] = ref_seq
@@ -517,7 +517,7 @@ def phasing(args):
 
 
 
-    atable_file = makePypeLocalFile( os.path.join(base_dir, ctg_id, "atable") )
+    atable_file = makePypeLocalFile( os.path.join(base_dir, ctg_id, 'g_atable', "atable") )
     parameters = {}
     parameters["ctg_id"] = ctg_id
     parameters["base_dir"] = base_dir
@@ -532,7 +532,7 @@ def phasing(args):
 
 
 
-    phased_variant_file = makePypeLocalFile( os.path.join(base_dir, ctg_id, "phased_variants") )
+    phased_variant_file = makePypeLocalFile( os.path.join(base_dir, ctg_id, 'get_phased_blocks', "phased_variants") )
     get_phased_blocks_task = PypeTask( inputs = { "vmap_file": vmap_file, "atable_file": atable_file },
                                       outputs = { "phased_variant_file": phased_variant_file },
                                       TaskType = PypeThreadTaskBase,
