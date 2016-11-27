@@ -1,12 +1,8 @@
 from falcon_kit import run_support as support
-#from pypeflow.data import PypeLocalFile, makePypeLocalFile, fn
-#from pypeflow.task import PypeTask, PypeThreadTaskBase, PypeTaskBase
-#from pypeflow.controller import PypeWorkflow, PypeThreadWorkflow
 from pypeflow.simple_pwatcher_bridge import (
         PypeLocalFile, makePypeLocalFile, fn,
         PypeTask,
         PypeProcWatcherWorkflow, MyFakePypeThreadTaskBase)
-PypeThreadTaskBase = MyFakePypeThreadTaskBase
 from falcon_kit.FastaReader import FastaReader
 import glob
 import json
@@ -213,8 +209,7 @@ def task_scatter_quiver(self):
             #make_quiver_task = PypeTask(inputs = {'ref_fasta': ref_fasta, 'read_sam': read_sam},
             #                           outputs = {'cns_fasta': cns_fasta, 'cns_fastq': cns_fastq, 'job_done': job_done},
             #                           parameters = parameters,
-            #                           TaskType = PypeThreadTaskBase,
-            #                           URL = 'task://localhost/q_{ctg_id}'.format(ctg_id = ctg_id))
+            #                           )
             #quiver_task = make_quiver_task(task_run_quiver)
             #wf.addTask(quiver_task)
             #job_done_plfs['{}'.format(ctg_id)] = job_done
@@ -253,8 +248,7 @@ def create_quiver_jobs(scattered_quiver_plf):
                                        },
                                        outputs = {'cns_fasta': cns_fasta, 'cns_fastq': cns_fastq, 'job_done': job_done},
                                        parameters = parameters,
-                                       TaskType = PypeThreadTaskBase,
-                                       URL = 'task://localhost/q_{ctg_id}'.format(ctg_id = ctg_id))
+            )
             quiver_task = make_quiver_task(task_run_quiver)
             wf.addTask(quiver_task)
             job_done_plfs['{}'.format(ctg_id)] = job_done
@@ -332,8 +326,7 @@ def main(argv=sys.argv):
     make_track_reads_task = PypeTask(inputs = {'hasm_done': hasm_done_plf},
                                      outputs = {'job_done': track_reads_h_done_plf},
                                      parameters = parameters,
-                                     TaskType = PypeThreadTaskBase,
-                                     URL = 'task://localhost/track_reads_h')
+    )
     track_reads_task = make_track_reads_task(task_track_reads)
     #sge_track_reads = config['sge_track_reads']
 
@@ -395,8 +388,6 @@ def main(argv=sys.argv):
                 'cns_h_ctg_fastq': cns_h_ctg_fastq_plf,
                 'job_done': zcat_done_plf,
             },
-            parameters = {},
-            URL = 'task://localhost/cns_zcat',
     )
     wf.addTask(make_task(task_cns_zcat))
 

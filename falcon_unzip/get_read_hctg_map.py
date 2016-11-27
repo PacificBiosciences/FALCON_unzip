@@ -1,10 +1,5 @@
-#from pypeflow.common import *
-#from pypeflow.data import PypeLocalFile, makePypeLocalFile, fn
-#from pypeflow.task import PypeTask, PypeThreadTaskBase, PypeTaskBase
-#from pypeflow.controller import PypeWorkflow, PypeMPWorkflow, PypeThreadWorkflow
 from pypeflow.simple_pwatcher_bridge import (PypeProcWatcherWorkflow, MyFakePypeThreadTaskBase,
         makePypeLocalFile, fn, PypeTask)
-PypeThreadTaskBase = MyFakePypeThreadTaskBase
 import argparse
 import logging
 import os
@@ -87,8 +82,7 @@ def get_read_hctg_map(asm_dir, hasm_dir, quiver_dir):
     make_task = PypeTask(
                inputs = inputs,
                outputs = {'read_to_contig_map': read_to_contig_map},
-               TaskType = PypeThreadTaskBase,
-               URL = 'task://localhost/get_ctg_read_map' )
+    )
     wf.addTask(make_task(generate_read_to_hctg_map))
     wf.refreshTargets() # block
 

@@ -1,10 +1,5 @@
-#from pypeflow.common import *
-#from pypeflow.data import PypeLocalFile, makePypeLocalFile, fn
-#from pypeflow.task import PypeTask, PypeThreadTaskBase, PypeTaskBase
-#from pypeflow.controller import PypeWorkflow, PypeThreadWorkflow
 from pypeflow.simple_pwatcher_bridge import (PypeProcWatcherWorkflow, MyFakePypeThreadTaskBase,
         makePypeLocalFile, fn, PypeTask)
-PypeThreadTaskBase = MyFakePypeThreadTaskBase
 from falcon_kit.FastaReader import FastaReader
 import argparse
 import logging
@@ -511,8 +506,7 @@ def phasing(args):
     make_het_call_task = PypeTask( inputs = { "bam_file": bam_file },
                          outputs = { "vmap_file": vmap_file, "vpos_file": vpos_file, "q_id_map_file": q_id_map_file },
                          parameters = parameters,
-                         TaskType = PypeThreadTaskBase,
-                         URL = "task://localhost/het_call") (make_het_call)
+    ) (make_het_call)
 
     wf.addTasks([make_het_call_task])
 
@@ -525,9 +519,7 @@ def phasing(args):
     parameters["base_dir"] = base_dir
     generate_association_table_task = PypeTask( inputs = { "vmap_file": vmap_file },
                                       outputs = { "atable_file": atable_file },
-                                      parameters = parameters,
-                                      TaskType = PypeThreadTaskBase,
-                                      URL = "task://localhost/g_atable") (generate_association_table)
+    ) (generate_association_table)
 
     wf.addTasks([generate_association_table_task])
 
@@ -537,8 +529,7 @@ def phasing(args):
     phased_variant_file = makePypeLocalFile( os.path.join(base_dir, ctg_id, 'get_phased_blocks', "phased_variants") )
     get_phased_blocks_task = PypeTask( inputs = { "vmap_file": vmap_file, "atable_file": atable_file },
                                       outputs = { "phased_variant_file": phased_variant_file },
-                                      TaskType = PypeThreadTaskBase,
-                                      URL = "task://localhost/get_phased_blocks") (get_phased_blocks)
+    ) (get_phased_blocks)
     wf.addTasks([get_phased_blocks_task])
 
 
@@ -550,8 +541,7 @@ def phasing(args):
                                                  "phased_variant_file": phased_variant_file },
                                       outputs = { "phased_read_file": phased_read_file },
                                       parameters = {"ctg_id": ctg_id},
-                                      TaskType = PypeThreadTaskBase,
-                                      URL = "task://localhost/get_phased_reads") (get_phased_reads)
+    ) (get_phased_reads)
     wf.addTasks([get_phased_reads_task])
 
 

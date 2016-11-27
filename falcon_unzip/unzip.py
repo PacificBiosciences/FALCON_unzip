@@ -1,12 +1,8 @@
 from falcon_kit import run_support as support
-#from pypeflow.data import PypeLocalFile, makePypeLocalFile, fn
-#from pypeflow.task import PypeTask, PypeThreadTaskBase, PypeTaskBase
-#from pypeflow.controller import PypeWorkflow, PypeThreadWorkflow
 from pypeflow.simple_pwatcher_bridge import (
         PypeLocalFile, makePypeLocalFile, fn,
         PypeTask,
         PypeProcWatcherWorkflow, MyFakePypeThreadTaskBase)
-PypeThreadTaskBase = MyFakePypeThreadTaskBase
 from falcon_kit.FastaReader import FastaReader
 import glob
 import logging
@@ -222,8 +218,7 @@ def unzip_all(config):
                                      outputs = {'job_done': job_done, 'ctg_list_file': ctg_list_file},
                                      parameters = parameters,
                                      wdir = wdir,
-                                     TaskType = PypeThreadTaskBase,
-                                     URL = 'task://localhost/track_reads')
+    )
     track_reads_task = make_track_reads_task(task_track_reads)
 
     wf.addTask(track_reads_task)
@@ -255,8 +250,7 @@ def unzip_all(config):
         make_blasr_task = PypeTask(inputs = {'ref_fasta': ref_fasta, 'read_fasta': read_fasta},
                                    outputs = {'ctg_aln_out': ctg_aln_out, 'job_done': job_done},
                                    parameters = parameters,
-                                   TaskType = PypeThreadTaskBase,
-                                   URL = 'task://localhost/aln_{ctg_id}'.format(ctg_id = ctg_id))
+        )
         blasr_task = make_blasr_task(task_run_blasr)
         aln1_outs[ctg_id] = (ctg_aln_out, job_done)
         wf.addTask(blasr_task)
@@ -270,8 +264,7 @@ def unzip_all(config):
         make_phasing_task = PypeTask(inputs = {'ref_fasta': ref_fasta, 'aln_bam':ctg_aln_out},
                                    outputs = {'job_done': job_done},
                                    parameters = parameters,
-                                   TaskType = PypeThreadTaskBase,
-                                   URL = 'task://localhost/p_{ctg_id}'.format(ctg_id = ctg_id))
+        )
         phasing_task = make_phasing_task(task_phasing)
         wf.addTask(phasing_task)
 
@@ -281,7 +274,7 @@ def unzip_all(config):
     #mkdir(hasm_wd)
     rid_to_phase_all = makePypeLocalFile(os.path.join(hasm_wd, 'rid-to-phase-all', 'rid_to_phase.all'))
     task = PypeTask(inputs = all_ctg_out, outputs = {'rid_to_phase_all': rid_to_phase_all},
-                TaskType = PypeThreadTaskBase, URL = 'task://localhost/rid_to_phase_all')(get_rid_to_phase_all)
+    ) (get_rid_to_phase_all)
     wf.addTask(task)
 
     parameters['wd'] = hasm_wd
@@ -289,8 +282,7 @@ def unzip_all(config):
     make_hasm_task = PypeTask(inputs = {'rid_to_phase_all': rid_to_phase_all},
                               outputs = {'job_done': job_done},
                               parameters = parameters,
-                              TaskType = PypeThreadTaskBase,
-                              URL = 'task://localhost/hasm')
+    )
     hasm_task = make_hasm_task(task_hasm)
 
     wf.addTask(hasm_task)
