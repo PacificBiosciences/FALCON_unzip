@@ -519,6 +519,7 @@ def phasing(args):
     parameters["base_dir"] = base_dir
     generate_association_table_task = PypeTask( inputs = { "vmap_file": vmap_file },
                                       outputs = { "atable_file": atable_file },
+                                      parameters = parameters,
     ) (generate_association_table)
 
     wf.addTasks([generate_association_table_task])
