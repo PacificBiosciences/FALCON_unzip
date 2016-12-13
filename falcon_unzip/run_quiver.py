@@ -317,6 +317,12 @@ def main(argv=sys.argv):
 
     wf = PypeProcWatcherWorkflow(
             max_jobs=quiver_concurrent_jobs,
+            job_type=config['job_type'],
+            job_queue=config.get('job_queue'),
+            sge_option=config.get('sge_option'),
+            watcher_type=config.get('pwatcher_type'),
+            #watcher_directory=config.get('pwatcher_directory', 'mypwatcher'),
+            use_tmpdir=config.get('use_tmpdir'),
     )
 
     abscwd = os.path.abspath('.')
