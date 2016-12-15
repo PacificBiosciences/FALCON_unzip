@@ -58,7 +58,7 @@ def generate_read_to_hctg_map(self):
             for ctg in list(pread_to_contigs[ k ]):
                 print >>f, '%09d %09d %s %s' % (pid, rid, oid, ctg)
 
-def get_read_hctg_map(asm_dir, hasm_dir, quiver_dir):
+def get_read_hctg_map(asm_dir, hasm_dir, read_to_contig_map_fn):
     wf = PypeProcWatcherWorkflow(
             max_jobs=12, # TODO: Why was NumThreads ever set? There is only one task!
     )
@@ -68,10 +68,9 @@ def get_read_hctg_map(asm_dir, hasm_dir, quiver_dir):
     h_ctg_edges = makePypeLocalFile(os.path.join(hasm_dir, 'all_h_ctg_edges'))
     p_ctg_edges = makePypeLocalFile(os.path.join(hasm_dir, 'all_p_ctg_edges'))
     h_ctg_ids = makePypeLocalFile( os.path.join(hasm_dir, "all_h_ctg_ids"))
-    read_map_dir = os.path.join(quiver_dir, 'read_maps')
-    make_dirs(read_map_dir)
+    #make_dirs(os.path.dirname(os.path.abspath(read_to_contig_map_fn)) # Workflow does this.
 
-    read_to_contig_map = makePypeLocalFile(os.path.join(read_map_dir, 'read_to_contig_map'))
+    read_to_contig_map_plf = makePypeLocalFile(read_to_contig_map_fn)
 
     inputs = { 'rawread_id_file': rawread_id_file,
                'pread_id_file': pread_id_file,
@@ -81,7 +80,7 @@ def get_read_hctg_map(asm_dir, hasm_dir, quiver_dir):
 
     make_task = PypeTask(
                inputs = inputs,
-               outputs = {'read_to_contig_map': read_to_contig_map},
+               outputs = {'read_to_contig_map': read_to_contig_map_plf},
     )
     wf.addTask(make_task(generate_read_to_hctg_map))
     wf.refreshTargets() # block
@@ -89,22 +88,21 @@ def get_read_hctg_map(asm_dir, hasm_dir, quiver_dir):
 
 
 def parse_args(argv):
-    parser = argparse.ArgumentParser(description='generate `4-quiver/read_maps/read_to_contig_map` that contains the \
+    parser = argparse.ArgumentParser(description='generate `read_to_contig_map` that contains the \
 information from the chain of mapping: (contig id, last col) -> (internal p-read id) -> (internal raw-read id) -> (original read id)\n \
 it assumes the 2-asm-falcon/read_maps ... /dump_rawread_ids/rawread_ids and /dump_pread_ids/pread_ids are already generated',
               formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--basedir', type=str, default="./", help='the base working dir of a FALCON assembly')
+    parser.add_argument('--output', type=str, default="./4-quiver/read_maps/read_to_contig_map", help='output file')
     args = parser.parse_args(argv[1:])
     return args
 
 def main(argv=sys.argv):
     logging.basicConfig()
     args = parse_args(argv)
-    basedir = args.basedir
-    #rawread_dir = os.path.abspath(os.path.join(basedir, '0-rawreads'))
-    #pread_dir = os.path.abspath(os.path.join(basedir, '1-preads_ovl'))
-    asm_dir = os.path.abspath(os.path.join(basedir, '2-asm-falcon'))
-    hasm_dir = os.path.abspath(os.path.join(basedir, '3-unzip'))
-    quiver_dir = os.path.abspath(os.path.join(basedir, '4-quiver'))
+    output = args.output
+    #rawread_dir = os.path.abspath('0-rawreads')
+    #pread_dir = os.path.abspath('1-preads_ovl')
+    asm_dir = os.path.abspath('2-asm-falcon')
+    hasm_dir = os.path.abspath('3-unzip')
 
-    get_read_hctg_map(asm_dir=asm_dir, hasm_dir=hasm_dir, quiver_dir=quiver_dir)
+    get_read_hctg_map(asm_dir=asm_dir, hasm_dir=hasm_dir, read_to_contig_map_fn=output)

@@ -5,12 +5,15 @@ import glob
 import os
 import sys
 
-def select_reads_from_bam(input_bam_fofn_fn, asm_dir, hasm_dir, quiver_dir):
+def select_reads_from_bam(input_bam_fofn_fn, rawread_to_contigs_fn, rawread_ids_fn, sam_dir):
+    """Write ctg.sam files into cwd,
+    for each 'ctg' read in input BAMs.
+    """
     read_partition = {}
     read_to_ctgs = {}
 
-    rawread_to_contigs_fn = os.path.join(quiver_dir, 'read_maps', 'rawread_to_contigs')
-    rawread_ids_fn = os.path.join(asm_dir, 'read_maps', 'dump_rawread_ids', 'rawread_ids')
+    print "rawread_ids_fn:", repr(rawread_ids_fn)
+    print "rawread_to_contigs_fn:", repr(rawread_to_contigs_fn)
     rid_to_oid = open(rawread_ids_fn).read().split('\n')
     with open(rawread_to_contigs_fn) as f:
         for row in f:
@@ -63,8 +66,6 @@ def select_reads_from_bam(input_bam_fofn_fn, asm_dir, hasm_dir, quiver_dir):
 
     outfile = {}
 
-    sam_dir = os.path.join(quiver_dir, 'reads')
-    mkdir(sam_dir)
     for row in open(input_bam_fofn_fn):
         fn = abs_fn(row.strip())
         samfile = pysam.AlignmentFile(fn, 'rb', check_sq = False)
@@ -79,7 +80,7 @@ def select_reads_from_bam(input_bam_fofn_fn, asm_dir, hasm_dir, quiver_dir):
                 #print "Not selected:", ctg
                 continue
             if ctg not in outfile:
-                samfile_fn = os.path.join(quiver_dir, 'reads', '%s.sam' % ctg)
+                samfile_fn = os.path.join(sam_dir, '%s.sam' % ctg)
                 print >>sys.stderr, 'samfile_fn:{!r}'.format(samfile_fn)
                 outfile[ctg] = pysam.AlignmentFile(samfile_fn, 'wh', header=header)
             outfile[ctg].write(r)
@@ -93,21 +94,16 @@ def mkdir(d):
         os.makedirs(d)
 
 def parse_args(argv):
-    parser = argparse.ArgumentParser(description='Assume 2-asm-falcon/read_maps/dump_rawread_ids/rawread_ids exists.',
+    parser = argparse.ArgumentParser(description='Write FOO',
               formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--basedir', type=str, default='./', help='the base working dir of a FALCON assembly')
+    parser.add_argument('--rawread-to-contigs', type=str, default='./2-asm-falcon/read_maps/rawread_to_contigs', help='rawread_to_contigs file (from where?)')
+    parser.add_argument('--rawread-ids', type=str, default='./2-asm-falcon/read_maps/dump_rawread_ids/rawread_ids', help='rawread_ids file (from where?)')
+    parser.add_argument('--sam-dir', type=str, default='./4-quiver/reads', help='Output directory for ctg.sam files')
     parser.add_argument('input_bam_fofn', type=str, help='File of BAM filenames. Paths are relative to dir of FOFN, not CWD.')
     args = parser.parse_args(argv[1:])
     return args
 
 def main(argv=sys.argv):
     args = parse_args(argv)
-    basedir = args.basedir
-    input_bam_fofn = args.input_bam_fofn
-    #rawread_dir = os.path.abspath(os.path.join(basedir, '0-rawreads'))
-    #pread_dir = os.path.abspath(os.path.join(basedir, '1-preads_ovl'))
-    asm_dir = os.path.abspath(os.path.join(basedir, '2-asm-falcon'))
-    hasm_dir = os.path.abspath(os.path.join(basedir, '3-unzip'))
-    quiver_dir = os.path.abspath(os.path.join(basedir, '4-quiver'))
 
-    select_reads_from_bam(input_bam_fofn, asm_dir=asm_dir, hasm_dir=hasm_dir, quiver_dir=quiver_dir)
+    select_reads_from_bam(args.input_bam_fofn, args.rawread_to_contigs, args.rawread_ids, args.sam_dir)

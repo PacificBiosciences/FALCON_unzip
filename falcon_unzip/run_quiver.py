@@ -34,24 +34,24 @@ def mkdir(d):
         os.makedirs(d)
 
 def task_track_reads(self):
+    input_bam_fofn = fn(self.input_bam_fofn)
     job_done = fn(self.job_done)
-    wd = self.parameters['wd']
-    config = self.parameters['config']
-    input_bam_fofn = config['input_bam_fofn']
-    script_dir = os.path.join(wd)
-    script_fn = os.path.join(script_dir, 'track_reads_h.sh')
+    work_dir = os.getcwd()
+    basedir = '../..' # assuming we are in ./4-quiver/reads/
+    script_fn = 'track_reads_h.sh'
 
+    # For now, in/outputs are in various directories, by convention.
     script = """\
 set -vex
 trap 'touch {job_done}.exit' EXIT
-cd {wd}
 hostname
 date
-fc_get_read_hctg_map.py --basedir ../..
-fc_rr_hctg_track.py --base_dir ../..
-mkdir -p 4-quiver/reads/
-fc_select_reads_from_bam.py --basedir ../.. {input_bam_fofn}
+cd {basedir}
+fc_get_read_hctg_map.py
+fc_rr_hctg_track.py
+fc_select_reads_from_bam.py {input_bam_fofn}
 date
+cd {work_dir}
 touch {job_done}
 """.format(**locals())
 
@@ -151,6 +151,8 @@ def task_scatter_quiver(self):
     p_ctg_fn = fn(self.p_ctg_fa)
     h_ctg_fn = fn(self.h_ctg_fa)
     out_json = fn(self.scattered_quiver_json)
+    track_reads_h_done_fn = fn(self.track_reads_h_done)
+    sam_dir = os.path.dirname(track_reads_h_done_fn)
     config = self.parameters['config']
 
     ref_seq_data = {}
@@ -181,29 +183,21 @@ def task_scatter_quiver(self):
         m_ctg_id = ctg_id.split('-')[0]
         wd = os.path.join(os.getcwd(), m_ctg_id)
         ref_fasta = os.path.join(wd, '{ctg_id}_ref.fa'.format(ctg_id = ctg_id))
-        read_sam = os.path.join(os.getcwd(), '../reads/{ctg_id}.sam'.format(ctg_id = ctg_id))
+        read_sam = os.path.join(sam_dir, '{ctg_id}.sam'.format(ctg_id = ctg_id))
         #cns_fasta = makePypeLocalFile(os.path.join(wd, 'cns-{ctg_id}.fasta.gz'.format(ctg_id = ctg_id)))
         #cns_fastq = makePypeLocalFile(os.path.join(wd, 'cns-{ctg_id}.fastq.gz'.format(ctg_id = ctg_id)))
         #job_done = makePypeLocalFile(os.path.join(wd, '{ctg_id}_quiver_done'.format(ctg_id = ctg_id)))
 
-        if os.path.exists(read_sam): # TODO(CD): Ask Jason what we should do if missing SAM. And what about network latency?
-            #if ctg_types[ctg_id] == 'p':
-            #    p_ctg_out.append( (cns_fasta, cns_fastq) )
-            #if ctg_types[ctg_id] == 'h':
-            #    h_ctg_out.append( (cns_fasta, cns_fastq) )
+        if os.path.exists(read_sam):
+            # *.sam are created in task_track_reads, fc_select_reads_from_bam.py
+            # Network latency should not matter because we have already waited for the 'done' file.
             mkdir(wd)
             if not os.path.exists(ref_fasta):
+                # TODO(CD): Up to 50MB of seq data. Should do this on remote host.
+                #   See https://github.com/PacificBiosciences/FALCON_unzip/issues/59
                 with open(ref_fasta,'w') as f:
                     print >>f, '>'+ctg_id
                     print >>f, sequence
-            #parameters = {'job_uid':'q-'+ctg_id, 'wd': wd, 'config':config, 'ctg_id': ctg_id }
-            #make_quiver_task = PypeTask(inputs = {'ref_fasta': ref_fasta, 'read_sam': read_sam},
-            #                           outputs = {'cns_fasta': cns_fasta, 'cns_fastq': cns_fastq, 'job_done': job_done},
-            #                           parameters = parameters,
-            #                           )
-            #quiver_task = make_quiver_task(task_run_quiver)
-            #wf.addTask(quiver_task)
-            #job_done_plfs['{}'.format(ctg_id)] = job_done
             new_job = {}
             new_job['ctg_id'] = ctg_id
             new_job['ctg_types'] = ctg_types
@@ -331,12 +325,16 @@ def main(argv=sys.argv):
     )
 
     abscwd = os.path.abspath('.')
-    parameters = {'wd': os.path.join(abscwd, '4-quiver', 'track_reads_h'), 'config': config,
+    parameters = {
             'sge_option': config['sge_track_reads'],
     }
+    input_bam_fofn_fn = config['input_bam_fofn']
+    input_bam_fofn_plf = makePypeLocalFile(input_bam_fofn_fn)
     hasm_done_plf = makePypeLocalFile('./3-unzip/1-hasm/hasm_done') # by convention
-    track_reads_h_done_plf = makePypeLocalFile(os.path.join(parameters['wd'], 'track_reads_h_done'))
-    make_track_reads_task = PypeTask(inputs = {'hasm_done': hasm_done_plf},
+    track_reads_h_done_plf = makePypeLocalFile('./4-quiver/reads/track_reads_h_done')
+    make_track_reads_task = PypeTask(inputs = {
+                                       'input_bam_fofn': input_bam_fofn_plf,
+                                       'hasm_done': hasm_done_plf},
                                      outputs = {'job_done': track_reads_h_done_plf},
                                      parameters = parameters,
     )
