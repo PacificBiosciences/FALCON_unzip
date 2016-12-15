@@ -319,6 +319,10 @@ def main(argv=sys.argv):
     if config.has_option('General', 'job_queue'):
         job_queue = config.get('General', 'job_queue')
 
+    pwatcher_type = 'fs_based'
+    if config.has_option('General', 'pwatcher_type'):
+        pwatcher_type = config.get('General', 'pwatcher_type')
+
     sge_blasr_aln = ' -pe smp 24 -q bigmem '
     if config.has_option('Unzip', 'sge_blasr_aln'):
         sge_blasr_aln = config.get('Unzip', 'sge_blasr_aln')
@@ -350,7 +354,8 @@ def main(argv=sys.argv):
               'sge_phasing': sge_phasing,
               'sge_hasm': sge_hasm,
               'sge_track_reads': sge_track_reads,
-              'unzip_concurrent_jobs':unzip_concurrent_jobs,
+              'unzip_concurrent_jobs': unzip_concurrent_jobs,
+              'pwatcher_type': pwatcher_type,
     }
 
     #support.job_type = 'SGE' #tmp hack until we have a configuration parser

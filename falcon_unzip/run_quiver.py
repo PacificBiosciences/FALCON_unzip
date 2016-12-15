@@ -281,6 +281,14 @@ def main(argv=sys.argv):
     if config.has_option('General', 'job_type'):
         job_type = config.get('General', 'job_type')
 
+    job_queue = 'default'
+    if config.has_option('General', 'job_queue'):
+        job_queue = config.get('General', 'job_queue')
+
+    pwatcher_type = 'fs_based'
+    if config.has_option('General', 'pwatcher_type'):
+        pwatcher_type = config.get('General', 'pwatcher_type')
+
     sge_track_reads = ' -pe smp 12 -q bigmem'
     if config.has_option('Unzip', 'sge_track_reads'):
         sge_track_reads = config.get('Unzip', 'sge_track_reads')
@@ -305,9 +313,11 @@ def main(argv=sys.argv):
         quiver_concurrent_jobs = config.getint('Unzip', 'quiver_concurrent_jobs')
 
     config = {'job_type': job_type,
+              'job_queue': job_queue,
               'sge_quiver': sge_quiver,
               'sge_track_reads': sge_track_reads,
               'input_bam_fofn': input_bam_fofn,
+              'pwatcher_type': pwatcher_type,
               'smrt_bin': smrt_bin}
     LOG.info('config={}'.format(pprint.pformat(config)))
 
