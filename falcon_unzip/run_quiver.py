@@ -38,7 +38,6 @@ def task_track_reads(self):
     wd = self.parameters['wd']
     config = self.parameters['config']
     input_bam_fofn = config['input_bam_fofn']
-    sge_track_reads = config['sge_track_reads']
     script_dir = os.path.join(wd)
     script_fn = os.path.join(script_dir, 'track_reads_h.sh')
 
@@ -59,7 +58,6 @@ touch {job_done}
     with open(script_fn,'w') as script_file:
         script_file.write(script)
     self.generated_script_fn = script_fn
-    #job_data['sge_option'] = sge_track_reads
 
 
 def task_run_quiver(self):
@@ -77,8 +75,6 @@ def task_run_quiver(self):
     ctg_id = self.parameters['ctg_id']
 
     smrt_bin = config['smrt_bin']
-    sge_quiver = config['sge_quiver']
-    job_type = config['job_type']
     samtools = os.path.join(smrt_bin, 'samtools')
     pbalign = os.path.join(smrt_bin, 'pbalign')
     makePbi = os.path.join(smrt_bin, 'makePbi')
@@ -110,7 +106,6 @@ touch {job_done}
     with open(script_fn,'w') as script_file:
         script_file.write(script)
     self.generated_script_fn = script_fn
-    #job_data['sge_option'] = sge_quiver
 
 def rm(f):
     system('rm -f {}'.format(f))
@@ -242,7 +237,9 @@ def create_quiver_jobs(scattered_quiver_plf):
                 h_ctg_out.append( (fn(cns_fasta), fn(cns_fastq)) )
             else:
                 LOG.warning('Type is {!r}, not "p" or "h". Why are we running Quiver?'.format(ctg_types[ctg_id]))
-            parameters = {'job_uid':'q-'+ctg_id, 'wd': wd, 'config':config, 'ctg_id': ctg_id }
+            parameters = {'job_uid':'q-'+ctg_id, 'wd': wd, 'config':config, 'ctg_id': ctg_id,
+                    'sge_option': config['sge_quiver'],
+            }
             make_quiver_task = PypeTask(inputs = {'ref_fasta': ref_fasta, 'read_sam': read_sam,
                                          'scattered_quiver': scattered_quiver_plf,
                                        },
@@ -252,7 +249,6 @@ def create_quiver_jobs(scattered_quiver_plf):
             quiver_task = make_quiver_task(task_run_quiver)
             wf.addTask(quiver_task)
             job_done_plfs['{}'.format(ctg_id)] = job_done
-    #sge_quiver = config['sge_quiver']
     return p_ctg_out, h_ctg_out, job_done_plfs
 
 def task_gather_quiver(self):
@@ -326,7 +322,9 @@ def main(argv=sys.argv):
     )
 
     abscwd = os.path.abspath('.')
-    parameters = {'wd': os.path.join(abscwd, '4-quiver', 'track_reads_h'), 'config': config}
+    parameters = {'wd': os.path.join(abscwd, '4-quiver', 'track_reads_h'), 'config': config,
+            'sge_option': config['sge_track_reads'],
+    }
     hasm_done_plf = makePypeLocalFile('./3-unzip/1-hasm/hasm_done') # by convention
     track_reads_h_done_plf = makePypeLocalFile(os.path.join(parameters['wd'], 'track_reads_h_done'))
     make_track_reads_task = PypeTask(inputs = {'hasm_done': hasm_done_plf},
@@ -334,7 +332,6 @@ def main(argv=sys.argv):
                                      parameters = parameters,
     )
     track_reads_task = make_track_reads_task(task_track_reads)
-    #sge_track_reads = config['sge_track_reads']
 
     wf.addTask(track_reads_task)
 
