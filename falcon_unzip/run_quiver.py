@@ -61,7 +61,6 @@ touch {job_done}
 
 
 def task_run_quiver(self):
-
     ref_fasta = fn(self.ref_fasta)
     read_sam = fn(self.read_sam)
 
@@ -70,25 +69,21 @@ def task_run_quiver(self):
     job_done = fn(self.job_done)
 
     job_uid = self.parameters['job_uid']
-    wd = self.parameters['wd']
-    config = self.parameters['config']
     ctg_id = self.parameters['ctg_id']
 
-    smrt_bin = config['smrt_bin']
+    smrt_bin = self.parameters['smrt_bin']
     samtools = os.path.join(smrt_bin, 'samtools')
     pbalign = os.path.join(smrt_bin, 'pbalign')
     makePbi = os.path.join(smrt_bin, 'makePbi')
     variantCaller = os.path.join(smrt_bin, 'variantCaller')
 
-    script_dir = os.path.join(wd)
-    script_fn =  os.path.join(script_dir , 'cns_%s.sh' % (ctg_id))
+    script_fn = 'cns_%s.sh' % (ctg_id)
 
     script = """\
 set -vex
 trap 'touch {job_done}.exit' EXIT
 hostname
 date
-cd {wd}
 
 {samtools} faidx {ref_fasta}
 {samtools} view -b -S {read_sam} > {ctg_id}.bam
@@ -156,6 +151,7 @@ def task_scatter_quiver(self):
     p_ctg_fn = fn(self.p_ctg_fa)
     h_ctg_fn = fn(self.h_ctg_fa)
     out_json = fn(self.scattered_quiver_json)
+    config = self.parameters['config']
 
     ref_seq_data = {}
 
@@ -183,9 +179,9 @@ def task_scatter_quiver(self):
     for ctg_id in ctg_ids:
         sequence = ref_seq_data[ctg_id]
         m_ctg_id = ctg_id.split('-')[0]
-        wd = os.path.join(os.getcwd(), './4-quiver/', m_ctg_id)
+        wd = os.path.join(os.getcwd(), m_ctg_id)
         ref_fasta = os.path.join(wd, '{ctg_id}_ref.fa'.format(ctg_id = ctg_id))
-        read_sam = os.path.join(os.getcwd(), './4-quiver/reads/' '{ctg_id}.sam'.format(ctg_id = ctg_id))
+        read_sam = os.path.join(os.getcwd(), '../reads/{ctg_id}.sam'.format(ctg_id = ctg_id))
         #cns_fasta = makePypeLocalFile(os.path.join(wd, 'cns-{ctg_id}.fasta.gz'.format(ctg_id = ctg_id)))
         #cns_fastq = makePypeLocalFile(os.path.join(wd, 'cns-{ctg_id}.fastq.gz'.format(ctg_id = ctg_id)))
         #job_done = makePypeLocalFile(os.path.join(wd, '{ctg_id}_quiver_done'.format(ctg_id = ctg_id)))
@@ -196,8 +192,8 @@ def task_scatter_quiver(self):
             #if ctg_types[ctg_id] == 'h':
             #    h_ctg_out.append( (cns_fasta, cns_fastq) )
             mkdir(wd)
-            if not os.path.exists(fn(ref_fasta)):
-                with open(fn(ref_fasta),'w') as f:
+            if not os.path.exists(ref_fasta):
+                with open(ref_fasta,'w') as f:
                     print >>f, '>'+ctg_id
                     print >>f, sequence
             #parameters = {'job_uid':'q-'+ctg_id, 'wd': wd, 'config':config, 'ctg_id': ctg_id }
@@ -210,10 +206,15 @@ def task_scatter_quiver(self):
             #job_done_plfs['{}'.format(ctg_id)] = job_done
             new_job = {}
             new_job['ctg_id'] = ctg_id
+            new_job['ctg_types'] = ctg_types
+            new_job['smrt_bin'] = config['smrt_bin']
+            new_job['sge_option'] = config['sge_quiver']
+            new_job['ref_fasta'] = ref_fasta
+            new_job['read_sam'] = read_sam
             jobs.append(new_job)
     open(out_json, 'w').write(json.dumps(jobs))
 
-def create_quiver_jobs(scattered_quiver_plf):
+def create_quiver_jobs(wf, scattered_quiver_plf):
     scattered_quiver_fn = fn(scattered_quiver_plf)
     jobs = json.loads(open(scattered_quiver_fn).read())
     #ctg_ids = sorted(jobs['ref_seq_data'])
@@ -222,10 +223,15 @@ def create_quiver_jobs(scattered_quiver_plf):
     job_done_plfs = {}
     for job in jobs:
         ctg_id = job['ctg_id']
+        ctg_types = job['ctg_types']
+        smrt_bin = job['smrt_bin']
+        sge_option = job['sge_option']
+        ref_fasta = makePypeLocalFile(job['ref_fasta'])
+        read_sam = makePypeLocalFile(job['read_sam'])
         m_ctg_id = ctg_id.split('-')[0]
         wd = os.path.join(os.getcwd(), './4-quiver/', m_ctg_id)
-        ref_fasta = makePypeLocalFile(os.path.join(wd, '{ctg_id}_ref.fa'.format(ctg_id = ctg_id)))
-        read_sam = makePypeLocalFile(os.path.join(os.getcwd(), './4-quiver/reads/' '{ctg_id}.sam'.format(ctg_id = ctg_id)))
+        #ref_fasta = makePypeLocalFile(os.path.join(wd, '{ctg_id}_ref.fa'.format(ctg_id = ctg_id)))
+        #read_sam = makePypeLocalFile(os.path.join(os.getcwd(), './4-quiver/reads/' '{ctg_id}.sam'.format(ctg_id = ctg_id)))
         cns_fasta = makePypeLocalFile(os.path.join(wd, 'cns-{ctg_id}.fasta.gz'.format(ctg_id = ctg_id)))
         cns_fastq = makePypeLocalFile(os.path.join(wd, 'cns-{ctg_id}.fastq.gz'.format(ctg_id = ctg_id)))
         job_done = makePypeLocalFile(os.path.join(wd, '{ctg_id}_quiver_done'.format(ctg_id = ctg_id)))
@@ -237,8 +243,11 @@ def create_quiver_jobs(scattered_quiver_plf):
                 h_ctg_out.append( (fn(cns_fasta), fn(cns_fastq)) )
             else:
                 LOG.warning('Type is {!r}, not "p" or "h". Why are we running Quiver?'.format(ctg_types[ctg_id]))
-            parameters = {'job_uid':'q-'+ctg_id, 'wd': wd, 'config':config, 'ctg_id': ctg_id,
-                    'sge_option': config['sge_quiver'],
+            parameters = {
+                    'job_uid':'q-'+ctg_id,
+                    'ctg_id': ctg_id,
+                    'smrt_bin': smrt_bin,
+                    'sge_option': sge_option,
             }
             make_quiver_task = PypeTask(inputs = {'ref_fasta': ref_fasta, 'read_sam': read_sam,
                                          'scattered_quiver': scattered_quiver_plf,
@@ -336,6 +345,9 @@ def main(argv=sys.argv):
     wf.addTask(track_reads_task)
 
     scattered_quiver_plf = makePypeLocalFile('4-quiver/quiver_scatter/scattered.json')
+    parameters = {
+            'config': config,
+    }
     make_task = PypeTask(
             inputs = {
                 'p_ctg_fa': makePypeLocalFile('3-unzip/all_p_ctg.fa'),
@@ -345,12 +357,12 @@ def main(argv=sys.argv):
             outputs = {
                 'scattered_quiver_json': scattered_quiver_plf,
             },
-            parameters = {},
+            parameters = parameters,
     )
     wf.addTask(make_task(task_scatter_quiver))
     wf.refreshTargets()
 
-    p_ctg_out, h_ctg_out, job_done_plfs = create_quiver_jobs(scattered_quiver_plf)
+    p_ctg_out, h_ctg_out, job_done_plfs = create_quiver_jobs(wf, scattered_quiver_plf)
 
     gathered_p_ctg_plf = makePypeLocalFile('4-quiver/cns_gather/p_ctg.txt')
     gathered_h_ctg_plf = makePypeLocalFile('4-quiver/cns_gather/h_ctg.txt')
