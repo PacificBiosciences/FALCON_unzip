@@ -86,7 +86,8 @@ cd {wd}
 time {blasr} {read_fasta} {ref_fasta} -noSplitSubreads -clipping subread\
  -hitPolicy randombest -randomSeed 42 -bestn 1 -minPctIdentity 70.0\
  -minMatch 12  -nproc 24 -sam -out tmp_aln.sam
-{samtools} view -bS tmp_aln.sam | {samtools} sort - {ctg_id}_sorted
+#{samtools} view -bS tmp_aln.sam | {samtools} sort - {ctg_id}_sorted
+{samtools} sort tmp_aln.sam -o {ctg_id}_sorted.bam
 {samtools} index {ctg_id}_sorted.bam
 rm tmp_aln.sam
 date
@@ -147,7 +148,7 @@ hostname
 date
 cd {wd}
 
-fc_ovlp_filter_with_phase.py --fofn {las_fofn} --max_diff 120 --max_cov 120 --min_cov 1 --n_core 12 --min_len 2500 --db ../../1-preads_ovl/preads.db --rid_phase_map {rid_to_phase_all} > preads.p_ovl
+fc_ovlp_filter_with_phase.py --fofn {las_fofn} --max_diff 120 --max_cov 120 --min_cov 1 --n_core 48 --min_len 2500 --db ../../1-preads_ovl/preads.db --rid_phase_map {rid_to_phase_all} > preads.p_ovl
 fc_phased_ovlp_to_graph.py preads.p_ovl --min_len 2500 > fc.log
 if [ -e ../../1-preads_ovl/preads4falcon.fasta ];
 then
@@ -186,9 +187,10 @@ touch {job_done}
     self.generated_script_fn = script_fn
 
 def unzip_all(config):
-    unzip_concurrent_jobs = config['unzip_concurrent_jobs']
+    unzip_blasr_concurrent_jobs = config['unzip_blasr_concurrent_jobs']
+    unzip_phasing_concurrent_jobs = config['unzip_phasing_concurrent_jobs']
     wf = PypeProcWatcherWorkflow(
-            max_jobs=unzip_concurrent_jobs,
+            max_jobs=unzip_blasr_concurrent_jobs,
             job_type=config['job_type'],
             job_queue=config.get('job_queue'),
             sge_option=config.get('sge_option'),
@@ -246,6 +248,19 @@ def unzip_all(config):
         blasr_task = make_blasr_task(task_run_blasr)
         aln1_outs[ctg_id] = (ctg_aln_out, job_done)
         wf.addTask(blasr_task)
+    wf.refreshTargets()
+
+    wf.max_jobs = unzip_phasing_concurrent_jobs
+    for ctg_id in ctg_ids:
+        # inputs
+        ref_fasta = makePypeLocalFile('./3-unzip/reads/{ctg_id}_ref.fa'.format(ctg_id = ctg_id))
+        read_fasta = makePypeLocalFile('./3-unzip/reads/{ctg_id}_reads.fa'.format(ctg_id = ctg_id))
+
+        # outputs
+        wd = os.path.join(os.getcwd(), './3-unzip/0-phasing/{ctg_id}/'.format(ctg_id = ctg_id))
+
+        blasr_dir = os.path.join(wd, 'blasr')
+        ctg_aln_out = makePypeLocalFile(os.path.join(blasr_dir, '{ctg_id}_sorted.bam'.format(ctg_id = ctg_id)))
 
         phasing_dir = os.path.join(wd, 'phasing')
         job_done = makePypeLocalFile(os.path.join(phasing_dir, 'p_{ctg_id}_done'.format(ctg_id = ctg_id)))
@@ -261,7 +276,6 @@ def unzip_all(config):
         )
         phasing_task = make_phasing_task(task_phasing)
         wf.addTask(phasing_task)
-
     wf.refreshTargets()
 
     hasm_wd = os.path.abspath('./3-unzip/1-hasm/')
@@ -343,9 +357,13 @@ def main(argv=sys.argv):
     if config.has_option('Unzip', 'sge_track_reads'):
         sge_track_reads = config.get('Unzip', 'sge_track_reads')
 
-    unzip_concurrent_jobs = 8
-    if config.has_option('Unzip', 'unzip_concurrent_jobs'):
-        unzip_concurrent_jobs = config.getint('Unzip', 'unzip_concurrent_jobs')
+    unzip_blasr_concurrent_jobs = 8
+    if config.has_option('Unzip', 'unzip_blasr_concurrent_jobs'):
+        unzip_blasr_concurrent_jobs = config.getint('Unzip', 'unzip_blasr_concurrent_jobs')
+
+    unzip_phasing_concurrent_jobs = 8
+    if config.has_option('Unzip', 'unzip_phasing_concurrent_jobs'):
+        unzip_phasing_concurrent_jobs = config.getint('Unzip', 'unzip_phasing_concurrent_jobs')
 
     config = {'job_type': job_type,
               'job_queue': job_queue,
@@ -354,7 +372,8 @@ def main(argv=sys.argv):
               'sge_phasing': sge_phasing,
               'sge_hasm': sge_hasm,
               'sge_track_reads': sge_track_reads,
-              'unzip_concurrent_jobs': unzip_concurrent_jobs,
+              'unzip_blasr_concurrent_jobs': unzip_blasr_concurrent_jobs,
+              'unzip_phasing_concurrent_jobs': unzip_phasing_concurrent_jobs,
               'pwatcher_type': pwatcher_type,
     }
 
