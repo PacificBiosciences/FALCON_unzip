@@ -86,10 +86,10 @@ hostname
 date
 
 {samtools} faidx {ref_fasta}
-{samtools} view -b -S {read_sam} > {ctg_id}.bam
+#{samtools} view -b -S {read_sam} > {ctg_id}.bam
 {pbalign} --tmpDir=/localdisk/scratch/ --nproc=24 --minAccuracy=0.75 --minLength=50\
           --minAnchorSize=12 --maxDivergence=30 --concordant --algorithm=blasr\
-          --algorithmOptions=-useQuality --maxHits=1 --hitPolicy=random --seed=1\
+          --algorithmOptions=--useQuality --maxHits=1 --hitPolicy=random --seed=1\
             {ctg_id}.bam {ref_fasta} aln-{ctg_id}.bam
 #{makePbi} --referenceFasta {ref_fasta} aln-{ctg_id}.bam
 ({variantCaller} -x 5 -X 120 -q 20 -j 24 -r {ref_fasta} aln-{ctg_id}.bam\
@@ -125,11 +125,14 @@ def task_cns_zcat(self):
             cns_fasta_fn, cns_fastq_fn = line.split()
             system('zcat {cns_fasta_fn} >> {cns_p_ctg_fasta_fn}'.format(**locals()))
             system('zcat {cns_fastq_fn} >> {cns_p_ctg_fastq_fn}'.format(**locals()))
-    with open(gathered_p_ctg_fn) as ifs:
-        for line in ifs:
-            cns_fasta_fn, cns_fastq_fn = line.split()
-            rm(cns_fasta_fn)
-            rm(cns_fasta_fn)
+
+    # comment out this for now for recovering purpose
+    #with open(gathered_p_ctg_fn) as ifs:
+    #    for line in ifs:
+    #        cns_fasta_fn, cns_fastq_fn = line.split()
+    #        rm(cns_fasta_fn)
+    #        rm(cns_fasta_fn)
+
     rm(cns_h_ctg_fasta_fn)
     touch(cns_h_ctg_fasta_fn)
     rm(cns_h_ctg_fastq_fn)
@@ -139,11 +142,13 @@ def task_cns_zcat(self):
             cns_fasta_fn, cns_fastq_fn = line.split()
             system('zcat {cns_fasta_fn} >> {cns_h_ctg_fasta_fn}'.format(**locals()))
             system('zcat {cns_fastq_fn} >> {cns_h_ctg_fastq_fn}'.format(**locals()))
-    with open(gathered_h_ctg_fn) as ifs:
-        for line in ifs:
-            cns_fasta_fn, cns_fastq_fn = line.split()
-            rm(cns_fasta_fn)
-            rm(cns_fasta_fn)
+
+    # comment out this for now for recovering purpose
+    #with open(gathered_h_ctg_fn) as ifs:
+    #    for line in ifs:
+    #        cns_fasta_fn, cns_fastq_fn = line.split()
+    #        rm(cns_fasta_fn)
+    #        rm(cns_fasta_fn)
 
     touch(job_done_fn)
 

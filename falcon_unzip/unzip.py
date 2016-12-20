@@ -83,13 +83,13 @@ cd {wd}
 hostname
 date
 cd {wd}
-time {blasr} {read_fasta} {ref_fasta} -noSplitSubreads -clipping subread\
- -hitPolicy randombest -randomSeed 42 -bestn 1 -minPctIdentity 70.0\
- -minMatch 12  -nproc 24 -sam -out tmp_aln.sam
+time {blasr} {read_fasta} {ref_fasta} --noSplitSubreads --clipping subread\
+ --hitPolicy randombest --randomSeed 42 --bestn 1 --minPctIdentity 70.0\
+ --minMatch 12  --nproc 24 --bam --out tmp_aln.bam
 #{samtools} view -bS tmp_aln.sam | {samtools} sort - {ctg_id}_sorted
-{samtools} sort tmp_aln.sam -o {ctg_id}_sorted.bam
+{samtools} sort tmp_aln.bam -o {ctg_id}_sorted.bam
 {samtools} index {ctg_id}_sorted.bam
-rm tmp_aln.sam
+rm tmp_aln.bam
 date
 touch {job_done}
 """.format(**locals())
@@ -109,7 +109,9 @@ def task_phasing(self):
     wd = self.parameters['wd']
     ctg_id = self.parameters['ctg_id']
 
-    #config = self.parameters['config']
+    config = self.parameters['config']
+    smrt_bin = config['smrt_bin']
+    samtools = os.path.join(smrt_bin, 'samtools')
 
     script_fn = os.path.join(wd , 'p_%s.sh' % (ctg_id))
 
@@ -120,7 +122,7 @@ cd {wd}
 hostname
 date
 cd {wd}
-fc_phasing.py --bam {aln_bam} --fasta {ref_fasta} --ctg_id {ctg_id} --base_dir ..
+fc_phasing.py --bam {aln_bam} --fasta {ref_fasta} --ctg_id {ctg_id} --base_dir .. --samtools {samtools}
 fc_phasing_readmap.py --ctg_id {ctg_id} --read_map_dir ../../../2-asm-falcon/read_maps --phased_reads phased_reads
 date
 touch {job_done}
