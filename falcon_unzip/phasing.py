@@ -84,7 +84,6 @@ def make_het_call(self):
                     matches.append( (rp, SEQ[qp]) )
                     rp += 1
                     qp += 1
-                matches = matches[1:-1]
                 for pos, b in  matches:
                     pileup.setdefault(pos, {})
                     pileup[pos].setdefault(b, [])

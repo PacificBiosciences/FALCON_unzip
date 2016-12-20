@@ -20,7 +20,7 @@ def main(args):
                 row = row.strip().split()
                 q_cov = float(row[10])
                 idt = float(row[6])
-                if q_cov > 99 and idt > 99:
+                if q_cov > 99 and idt > 99.9:
                     filter_out.add(row[-1])
 
         p_ctg_to_phase = {}
