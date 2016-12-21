@@ -17,11 +17,14 @@ def make_het_call(self):
     ctg_id = self.parameters["ctg_id"]
     ref_seq = self.parameters["ref_seq"]
     base_dir = self.parameters["base_dir"]
+    samtools = self.parameters["samtools"]
     vmap_fn = fn(self.vmap_file)
     vpos_fn = fn(self.vpos_file)
     q_id_map_fn = fn(self.q_id_map_file)
 
-    p = subprocess.Popen(shlex.split("samtools view %s %s" % (bam_fn, ctg_id) ), stdout=subprocess.PIPE)
+
+    # maybe we should check if the samtools path is valid
+    p = subprocess.Popen(shlex.split("%s view %s %s" % (samtools, bam_fn, ctg_id) ), stdout=subprocess.PIPE)
     pileup = {}
     q_id_map = {}
     q_max_id = 0
@@ -75,13 +78,12 @@ def make_het_call(self):
             adv = int(m.group(1))
             if m.group(2) == "S":
                 qp += adv
-            if m.group(2) == "M":
+            if m.group(2) in ("M", "=", "X"):
                 matches = []
                 for i in range(adv):
                     matches.append( (rp, SEQ[qp]) )
                     rp += 1
                     qp += 1
-                matches = matches[1:-1]
                 for pos, b in  matches:
                     pileup.setdefault(pos, {})
                     pileup[pos].setdefault(b, [])
@@ -482,6 +484,7 @@ def phasing(args):
     fasta_fn = args.fasta
     ctg_id = args.ctg_id
     base_dir = args.base_dir
+    samtools = args.samtools
 
     ref_seq = ""
     for r in FastaReader(fasta_fn):
@@ -502,6 +505,7 @@ def phasing(args):
     parameters["ctg_id"] = ctg_id
     parameters["ref_seq"] = ref_seq
     parameters["base_dir"] = base_dir
+    parameters["samtools"] = samtools
 
     make_het_call_task = PypeTask( inputs = { "bam_file": bam_file },
                          outputs = { "vmap_file": vmap_file, "vpos_file": vpos_file, "q_id_map_file": q_id_map_file },
@@ -559,6 +563,7 @@ def parse_args(argv):
     parser.add_argument('--fasta', type=str, help='path to the fasta file of contain the contig', required=True)
     parser.add_argument('--ctg_id', type=str, help='contig identifier in the bam file', required=True)
     parser.add_argument('--base_dir', type=str, default="./", help='the output base_dir, default to current working directory')
+    parser.add_argument('--samtools', type=str, default="samtools", help='path to samtools')
 
 
     args = parser.parse_args(argv[1:])

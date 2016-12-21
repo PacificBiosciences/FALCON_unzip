@@ -62,7 +62,7 @@ touch {job_done}
 
 def task_run_quiver(self):
     ref_fasta = fn(self.ref_fasta)
-    read_sam = fn(self.read_sam)
+    read_bam = fn(self.read_bam)
 
     cns_fasta = fn(self.cns_fasta)
     cns_fastq = fn(self.cns_fastq)
@@ -86,13 +86,11 @@ hostname
 date
 
 {samtools} faidx {ref_fasta}
-{samtools} view -b -S {read_sam} > {ctg_id}.bam
 {pbalign} --tmpDir=/localdisk/scratch/ --nproc=24 --minAccuracy=0.75 --minLength=50\
           --minAnchorSize=12 --maxDivergence=30 --concordant --algorithm=blasr\
-          --algorithmOptions=-useQuality --maxHits=1 --hitPolicy=random --seed=1\
-            {ctg_id}.bam {ref_fasta} aln-{ctg_id}.bam
-#{makePbi} --referenceFasta {ref_fasta} aln-{ctg_id}.bam
-({variantCaller} -x 5 -X 120 -q 20 -j 24 -r {ref_fasta} aln-{ctg_id}.bam\
+          --algorithmOptions=--useQuality --maxHits=1 --hitPolicy=random --seed=1\
+            {read_bam} {ref_fasta} aln-{ctg_id}.bam
+({variantCaller} --algorithm=arrow -x 5 -X 120 -q 20 -j 24 -r {ref_fasta} aln-{ctg_id}.bam\
             -o {cns_fasta} -o {cns_fastq}) || echo quvier failed
 date
 touch {job_done}
@@ -125,11 +123,14 @@ def task_cns_zcat(self):
             cns_fasta_fn, cns_fastq_fn = line.split()
             system('zcat {cns_fasta_fn} >> {cns_p_ctg_fasta_fn}'.format(**locals()))
             system('zcat {cns_fastq_fn} >> {cns_p_ctg_fastq_fn}'.format(**locals()))
-    with open(gathered_p_ctg_fn) as ifs:
-        for line in ifs:
-            cns_fasta_fn, cns_fastq_fn = line.split()
-            rm(cns_fasta_fn)
-            rm(cns_fasta_fn)
+
+    # comment out this for now for recovering purpose
+    #with open(gathered_p_ctg_fn) as ifs:
+    #    for line in ifs:
+    #        cns_fasta_fn, cns_fastq_fn = line.split()
+    #        rm(cns_fasta_fn)
+    #        rm(cns_fasta_fn)
+
     rm(cns_h_ctg_fasta_fn)
     touch(cns_h_ctg_fasta_fn)
     rm(cns_h_ctg_fastq_fn)
@@ -139,11 +140,13 @@ def task_cns_zcat(self):
             cns_fasta_fn, cns_fastq_fn = line.split()
             system('zcat {cns_fasta_fn} >> {cns_h_ctg_fasta_fn}'.format(**locals()))
             system('zcat {cns_fastq_fn} >> {cns_h_ctg_fastq_fn}'.format(**locals()))
-    with open(gathered_h_ctg_fn) as ifs:
-        for line in ifs:
-            cns_fasta_fn, cns_fastq_fn = line.split()
-            rm(cns_fasta_fn)
-            rm(cns_fasta_fn)
+
+    # comment out this for now for recovering purpose
+    #with open(gathered_h_ctg_fn) as ifs:
+    #    for line in ifs:
+    #        cns_fasta_fn, cns_fastq_fn = line.split()
+    #        rm(cns_fasta_fn)
+    #        rm(cns_fasta_fn)
 
     touch(job_done_fn)
 
@@ -152,7 +155,7 @@ def task_scatter_quiver(self):
     h_ctg_fn = fn(self.h_ctg_fa)
     out_json = fn(self.scattered_quiver_json)
     track_reads_h_done_fn = fn(self.track_reads_h_done)
-    sam_dir = os.path.dirname(track_reads_h_done_fn)
+    bam_dir = os.path.dirname(track_reads_h_done_fn)
     config = self.parameters['config']
 
     ref_seq_data = {}
@@ -183,12 +186,12 @@ def task_scatter_quiver(self):
         m_ctg_id = ctg_id.split('-')[0]
         wd = os.path.join(os.getcwd(), m_ctg_id)
         ref_fasta = os.path.join(wd, '{ctg_id}_ref.fa'.format(ctg_id = ctg_id))
-        read_sam = os.path.join(sam_dir, '{ctg_id}.sam'.format(ctg_id = ctg_id))
+        read_bam = os.path.join(bam_dir, '{ctg_id}.bam'.format(ctg_id = ctg_id))
         #cns_fasta = makePypeLocalFile(os.path.join(wd, 'cns-{ctg_id}.fasta.gz'.format(ctg_id = ctg_id)))
         #cns_fastq = makePypeLocalFile(os.path.join(wd, 'cns-{ctg_id}.fastq.gz'.format(ctg_id = ctg_id)))
         #job_done = makePypeLocalFile(os.path.join(wd, '{ctg_id}_quiver_done'.format(ctg_id = ctg_id)))
 
-        if os.path.exists(read_sam):
+        if os.path.exists(read_bam):
             # *.sam are created in task_track_reads, fc_select_reads_from_bam.py
             # Network latency should not matter because we have already waited for the 'done' file.
             mkdir(wd)
@@ -204,7 +207,7 @@ def task_scatter_quiver(self):
             new_job['smrt_bin'] = config['smrt_bin']
             new_job['sge_option'] = config['sge_quiver']
             new_job['ref_fasta'] = ref_fasta
-            new_job['read_sam'] = read_sam
+            new_job['read_bam'] = read_bam
             jobs.append(new_job)
     open(out_json, 'w').write(json.dumps(jobs))
 
@@ -221,16 +224,16 @@ def create_quiver_jobs(wf, scattered_quiver_plf):
         smrt_bin = job['smrt_bin']
         sge_option = job['sge_option']
         ref_fasta = makePypeLocalFile(job['ref_fasta'])
-        read_sam = makePypeLocalFile(job['read_sam'])
+        read_bam = makePypeLocalFile(job['read_bam'])
         m_ctg_id = ctg_id.split('-')[0]
         wd = os.path.join(os.getcwd(), './4-quiver/', m_ctg_id)
         #ref_fasta = makePypeLocalFile(os.path.join(wd, '{ctg_id}_ref.fa'.format(ctg_id = ctg_id)))
-        #read_sam = makePypeLocalFile(os.path.join(os.getcwd(), './4-quiver/reads/' '{ctg_id}.sam'.format(ctg_id = ctg_id)))
+        #read_bam = makePypeLocalFile(os.path.join(os.getcwd(), './4-quiver/reads/' '{ctg_id}.sam'.format(ctg_id = ctg_id)))
         cns_fasta = makePypeLocalFile(os.path.join(wd, 'cns-{ctg_id}.fasta.gz'.format(ctg_id = ctg_id)))
         cns_fastq = makePypeLocalFile(os.path.join(wd, 'cns-{ctg_id}.fastq.gz'.format(ctg_id = ctg_id)))
         job_done = makePypeLocalFile(os.path.join(wd, '{ctg_id}_quiver_done'.format(ctg_id = ctg_id)))
 
-        if os.path.exists(fn(read_sam)): # TODO(CD): Ask Jason what we should do if missing SAM.
+        if os.path.exists(fn(read_bam)): # TODO(CD): Ask Jason what we should do if missing SAM.
             if ctg_types[ctg_id] == 'p':
                 p_ctg_out.append( (fn(cns_fasta), fn(cns_fastq)) )
             elif ctg_types[ctg_id] == 'h':
@@ -243,7 +246,7 @@ def create_quiver_jobs(wf, scattered_quiver_plf):
                     'smrt_bin': smrt_bin,
                     'sge_option': sge_option,
             }
-            make_quiver_task = PypeTask(inputs = {'ref_fasta': ref_fasta, 'read_sam': read_sam,
+            make_quiver_task = PypeTask(inputs = {'ref_fasta': ref_fasta, 'read_bam': read_bam,
                                          'scattered_quiver': scattered_quiver_plf,
                                        },
                                        outputs = {'cns_fasta': cns_fasta, 'cns_fastq': cns_fastq, 'job_done': job_done},

@@ -47,8 +47,10 @@ def select_reads_from_bam(input_bam_fofn_fn, rawread_to_contigs_fn, rawread_ids_
         else:
             header['RG'].extend(samfile.header['RG'])
         samfile.close()
-
-    PG = header.pop('PG') #remove PG line as there might be a bug that generates no readable chrs
+    try:
+        PG = header.pop('PG') #remove PG line as there might be a bug that generates no readable chrs
+    except KeyError:
+        pass
     #print PG
 
     #base_dir = os.getcwd()
@@ -80,9 +82,9 @@ def select_reads_from_bam(input_bam_fofn_fn, rawread_to_contigs_fn, rawread_ids_
                 #print "Not selected:", ctg
                 continue
             if ctg not in outfile:
-                samfile_fn = os.path.join(sam_dir, '%s.sam' % ctg)
+                samfile_fn = os.path.join(sam_dir, '%s.bam' % ctg)
                 print >>sys.stderr, 'samfile_fn:{!r}'.format(samfile_fn)
-                outfile[ctg] = pysam.AlignmentFile(samfile_fn, 'wh', header=header)
+                outfile[ctg] = pysam.AlignmentFile(samfile_fn, 'wb', header=header)
             outfile[ctg].write(r)
         samfile.close()
 
